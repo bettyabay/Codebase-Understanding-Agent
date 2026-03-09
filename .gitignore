@@ -1,2 +1,27 @@
 challenge_doc/
-.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# uv
+.uv/
+
+# Test cache
+.pytest_cache/
+.coverage
+
+# Cartography output (commit per-repo, not globally)
+repo_cache/
+
+# Streamlit
+.streamlit/
+
+# IDE
+.vscode/
+.idea/

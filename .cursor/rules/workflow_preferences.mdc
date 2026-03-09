@@ -1,0 +1,12 @@
+---
+description: Workflow and task execution preferences
+alwaysApply: true
+---
+
+# Workflow Preferences
+
+- Focus only on the areas of code relevant to the current task
+- Do not touch code unrelated to the task at hand
+- Write thorough tests for all major functionality
+- Avoid making major architectural changes to a feature that is already working well, unless explicitly instructed to do so
+- Always consider what other methods and areas of the codebase may be affected by any code change before making it

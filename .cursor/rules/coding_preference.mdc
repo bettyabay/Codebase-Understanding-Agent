@@ -1,0 +1,17 @@
+---
+description: Core coding preferences and standards for this project
+alwaysApply: true
+---
+
+# Coding Preferences
+
+- Always prefer simple solutions
+- Avoid duplicating code — check for existing similar functionality elsewhere in the codebase before writing new code
+- Write code that accounts for different environments: dev, test, and prod
+- Only make changes that are explicitly requested or are clearly related to the requested change
+- When fixing a bug, exhaust all options using the existing implementation before introducing a new pattern or technology. If a new approach is introduced, remove the old implementation to avoid duplicate logic
+- Keep the codebase clean and organized
+- Avoid writing one-off scripts inside source files; keep them separate if needed
+- Refactor any file that exceeds 200–300 lines of code
+- Mock data is for tests only — never use mock or stub data in dev or prod environments
+- Never overwrite the `.env` file without first asking and receiving explicit confirmation

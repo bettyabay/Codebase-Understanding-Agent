@@ -1,0 +1,10 @@
+---
+description: Technology stack for this project
+alwaysApply: true
+---
+
+# Project Stack
+
+- **Backend**: Python
+- **Frontend**: Streamlit
+- **Tests**: Python (pytest)

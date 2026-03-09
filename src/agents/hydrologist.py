@@ -5,7 +5,7 @@ from collections import deque
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, TextColumn
 
 from src.analyzers.dag_config_parser import (
     AirflowDAGParser,
@@ -35,7 +35,7 @@ class Hydrologist:
     """
 
     def analyze(self, repo_path: Path, kg: KnowledgeGraph) -> KnowledgeGraph:
-        console.print("[bold cyan]Hydrologist[/bold cyan] — building data lineage graph…")
+        console.print("[bold cyan]Hydrologist[/bold cyan] - building data lineage graph...")
 
         repo_type = self._detect_repo_type(repo_path)
         console.print(f"  Detected repo type: [yellow]{repo_type}[/yellow]")
@@ -51,8 +51,8 @@ class Hydrologist:
             self._ingest_dbt_metadata(repo_path, yaml_files, kg)
 
         # SQL lineage
-        with Progress(SpinnerColumn(), TextColumn("{task.description}"), console=console) as prog:
-            t = prog.add_task(f"Analyzing {len(sql_files)} SQL files…", total=len(sql_files))
+        with Progress(TextColumn("{task.description}"), console=console) as prog:
+            t = prog.add_task(f"Analyzing {len(sql_files)} SQL files...", total=len(sql_files))
             for record in sql_files:
                 self._ingest_sql_file(record.path, kg)
                 prog.advance(t)
@@ -62,15 +62,15 @@ class Hydrologist:
             self._ingest_airflow_dags(py_files, kg)
 
         # Python data flow
-        with Progress(SpinnerColumn(), TextColumn("{task.description}"), console=console) as prog:
-            t = prog.add_task(f"Scanning {len(py_files)} Python files for data I/O…", total=len(py_files))
+        with Progress(TextColumn("{task.description}"), console=console) as prog:
+            t = prog.add_task(f"Scanning {len(py_files)} Python files for data I/O...", total=len(py_files))
             for record in py_files:
                 self._ingest_python_dataflow(record.path, kg)
                 prog.advance(t)
 
         stats = kg.stats()
         console.print(
-            f"  [green]✓[/green] Hydrologist complete — "
+            f"  [green]OK[/green] Hydrologist complete - "
             f"{stats['datasets']} datasets, {stats['transformations']} transformations, "
             f"{stats['lineage_edges']} lineage edges"
         )

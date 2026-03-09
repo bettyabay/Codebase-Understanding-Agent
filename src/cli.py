@@ -14,7 +14,7 @@ load_dotenv()
 
 app = typer.Typer(
     name="cartographer",
-    help="Brownfield Cartographer — codebase intelligence for FDE onboarding",
+    help="Brownfield Cartographer - codebase intelligence for FDE onboarding",
     no_args_is_help=True,
 )
 console = Console()
@@ -27,7 +27,7 @@ def analyze(
     skip_llm: bool = typer.Option(False, "--skip-llm", help="Skip LLM analysis (faster, no API key needed)"),
     incremental: bool = typer.Option(False, "--incremental", "-i", help="Re-analyze only changed files"),
 ) -> None:
-    """Run the full analysis pipeline: Surveyor → Hydrologist → Semanticist → Archivist."""
+    """Run the full analysis pipeline: Surveyor -> Hydrologist -> Semanticist -> Archivist."""
     from src.orchestrator import Orchestrator
 
     orchestrator = Orchestrator(output_dir=output)

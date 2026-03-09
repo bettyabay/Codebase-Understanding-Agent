@@ -46,7 +46,13 @@ def clone_if_remote(repo_path: str, target_dir: Optional[Path] = None) -> Path:
     """Clone a GitHub URL to a temp directory, or return the local path unchanged."""
     if repo_path.startswith(("http://", "https://", "git@")):
         dest = target_dir or Path(tempfile.mkdtemp(prefix="cartographer_"))
-        console.print(f"[cyan]Cloning[/cyan] {repo_path} → {dest}")
+        if dest.exists():
+            if (dest / ".git").exists():
+                console.print(f"[cyan]Using existing clone[/cyan] at {dest}")
+                return dest
+            if any(dest.iterdir()):
+                dest = dest.parent / f"{dest.name}_{int(datetime.now().timestamp())}"
+        console.print(f"[cyan]Cloning[/cyan] {repo_path} -> {dest}")
         try:
             import git
             git.Repo.clone_from(repo_path, dest, depth=100)

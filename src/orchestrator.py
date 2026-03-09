@@ -35,7 +35,7 @@ class Orchestrator:
         skip_llm: bool = False,
         incremental: bool = False,
     ) -> KnowledgeGraph:
-        """Run the full analysis pipeline: Surveyor → Hydrologist → Semanticist → Archivist."""
+        """Run the full analysis pipeline: Surveyor -> Hydrologist -> Semanticist -> Archivist."""
 
         resolved_path = clone_if_remote(repo_path, self.output_dir.parent / "repo_cache")
         repo_commit = self._get_current_commit(resolved_path)
@@ -48,7 +48,7 @@ class Orchestrator:
         return kg
 
     def _run_full(self, repo_path: Path, repo_commit: str, skip_llm: bool) -> KnowledgeGraph:
-        console.print(f"\n[bold]Brownfield Cartographer[/bold] — analyzing [cyan]{repo_path}[/cyan]")
+        console.print(f"\n[bold]Brownfield Cartographer[/bold] - analyzing [cyan]{repo_path}[/cyan]")
 
         kg = KnowledgeGraph()
 
@@ -64,7 +64,7 @@ class Orchestrator:
         self.archivist.log_trace("hydrologist_complete", "hydrologist", "data_flow_analysis", 1.0, self.output_dir,
                                  extra={"datasets": len(kg.all_datasets())})
 
-        # Phase 3: Semanticist (optional — requires API key)
+        # Phase 3: Semanticist (optional - requires API key)
         day_one_answers: dict = {}
         if not skip_llm:
             self.archivist.log_trace("semanticist_start", "semanticist", "llm_analysis", 0.9, self.output_dir)
@@ -84,12 +84,12 @@ class Orchestrator:
 
     def _run_incremental(self, repo_path: Path, repo_commit: str) -> KnowledgeGraph:
         """Re-analyze only files changed since the last run."""
-        console.print("[bold]Incremental update[/bold] — loading existing graph…")
+        console.print("[bold]Incremental update[/bold] - loading existing graph...")
         kg = KnowledgeGraph.load(self.output_dir)
 
         last_commit = self._get_last_run_commit()
         if not last_commit:
-            console.print("  No previous commit found — falling back to full analysis")
+            console.print("  No previous commit found - falling back to full analysis")
             return self._run_full(repo_path, repo_commit, skip_llm=True)
 
         changed_files = self._get_changed_files(repo_path, last_commit)
@@ -97,7 +97,7 @@ class Orchestrator:
             console.print("  [green]No changes since last run.[/green]")
             return kg
 
-        console.print(f"  Re-analyzing {len(changed_files)} changed files…")
+        console.print(f"  Re-analyzing {len(changed_files)} changed files...")
         for changed_path in changed_files:
             full_path = repo_path / changed_path
             if not full_path.exists():

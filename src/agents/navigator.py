@@ -52,7 +52,7 @@ def find_implementation(concept: str, kg: KnowledgeGraph, index_dir: Optional[Pa
     for module in sorted(kg.all_modules(), key=lambda m: m.pagerank_score, reverse=True):
         text = (module.purpose_statement + " " + module.path).lower()
         if any(word in text for word in concept_lower.split()):
-            results.append(f"- `{module.path}` — {module.purpose_statement[:200]}")
+            results.append(f"- `{module.path}` - {module.purpose_statement[:200]}")
         if len(results) >= 5:
             break
 
@@ -74,7 +74,7 @@ def trace_lineage(dataset: str, direction: str, kg: KnowledgeGraph) -> str:
     lines = [f"[graph traversal]\n\n**{direction.title()} lineage** for `{dataset}`:\n"]
     for item in results:
         indent = "  " * item["depth"]
-        lines.append(f"{indent}→ `{item['node']}` (depth {item['depth']})")
+        lines.append(f"{indent}-> `{item['node']}` (depth {item['depth']})")
     return "\n".join(lines)
 
 
@@ -96,8 +96,8 @@ def blast_radius(module_path: str, kg: KnowledgeGraph) -> str:
              f"({len(results)} downstream nodes):\n"]
     for item in results:
         indent = "  " * item["depth"]
-        source = f" — `{item['source_file']}`" if item.get("source_file") else ""
-        lines.append(f"{indent}→ `{item['node']}` (depth {item['depth']}){source}")
+        source = f" - `{item['source_file']}`" if item.get("source_file") else ""
+        lines.append(f"{indent}-> `{item['node']}` (depth {item['depth']}){source}")
     return "\n".join(lines)
 
 
@@ -264,7 +264,7 @@ class Navigator:
 
     def repl(self) -> None:
         """Start an interactive REPL session."""
-        console.print("\n[bold green]Navigator[/bold green] — Codebase Query Interface")
+        console.print("\n[bold green]Navigator[/bold green] - Codebase Query Interface")
         console.print("Type your question, or 'exit' to quit.\n")
 
         while True:

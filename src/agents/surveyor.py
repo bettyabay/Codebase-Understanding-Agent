@@ -5,7 +5,7 @@ from pathlib import Path
 
 import networkx as nx
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, TextColumn
 
 from src.analyzers.repo_ingester import (
     FileRecord,
@@ -32,7 +32,7 @@ class Surveyor:
     """
 
     def analyze(self, repo_path: Path, kg: KnowledgeGraph) -> KnowledgeGraph:
-        console.print("[bold cyan]Surveyor[/bold cyan] — scanning repository structure…")
+        console.print("[bold cyan]Surveyor[/bold cyan] - scanning repository structure...")
 
         files = walk_repo(repo_path)
         velocity = extract_git_velocity(repo_path, days=30)
@@ -42,8 +42,8 @@ class Surveyor:
         console.print(f"  Found [yellow]{len(files)}[/yellow] source files "
                       f"([yellow]{len(python_files)}[/yellow] Python)")
 
-        with Progress(SpinnerColumn(), TextColumn("{task.description}"), console=console) as progress:
-            task = progress.add_task("Parsing modules…", total=len(python_files))
+        with Progress(TextColumn("{task.description}"), console=console) as progress:
+            task = progress.add_task("Parsing modules...", total=len(python_files))
 
             for record in python_files:
                 self._analyze_python_file(record, kg, velocity, high_velocity)
@@ -55,7 +55,7 @@ class Surveyor:
 
         stats = kg.stats()
         console.print(
-            f"  [green]✓[/green] Surveyor complete — "
+            f"  [green]OK[/green] Surveyor complete - "
             f"{stats['modules']} modules, {stats['module_edges']} import edges"
         )
         return kg
@@ -128,7 +128,7 @@ class Surveyor:
 
         cycle_count = sum(1 for scc in sccs if len(scc) > 1)
         if cycle_count:
-            console.print(f"  [yellow]⚠[/yellow]  {cycle_count} circular dependency groups detected")
+            console.print(f"  [yellow]WARN[/yellow]  {cycle_count} circular dependency groups detected")
 
     def _flag_dead_code(self, kg: KnowledgeGraph) -> None:
         dead = 0

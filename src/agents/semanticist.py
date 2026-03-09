@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, TextColumn
 
 from src.graph.knowledge_graph import KnowledgeGraph
 from src.models.nodes import ModuleNode
@@ -63,18 +63,18 @@ class Semanticist:
         self._llm_client = None
 
     def analyze(self, kg: KnowledgeGraph, repo_path: Optional[Path] = None) -> dict:
-        console.print("[bold cyan]Semanticist[/bold cyan] — running LLM analysis…")
+        console.print("[bold cyan]Semanticist[/bold cyan] - running LLM analysis...")
 
         client = self._get_llm_client()
         if client is None:
-            console.print("  [yellow]⚠[/yellow]  No LLM API key configured — skipping semantic analysis")
+            console.print("  [yellow]WARN[/yellow]  No LLM API key configured - skipping semantic analysis")
             return {}
 
         modules = kg.all_modules()
-        console.print(f"  Generating purpose statements for {len(modules)} modules…")
+        console.print(f"  Generating purpose statements for {len(modules)} modules...")
 
-        with Progress(SpinnerColumn(), TextColumn("{task.description}"), console=console) as prog:
-            t = prog.add_task("Analyzing modules…", total=len(modules))
+        with Progress(TextColumn("{task.description}"), console=console) as prog:
+            t = prog.add_task("Analyzing modules...", total=len(modules))
             for module in modules:
                 if repo_path:
                     source = self._read_source(repo_path, module.path)
@@ -88,7 +88,7 @@ class Semanticist:
         day_one = self.answer_day_one_questions(kg)
 
         console.print(
-            f"  [green]✓[/green] Semanticist complete — "
+            f"  [green]OK[/green] Semanticist complete - "
             f"${self.budget.spent_usd:.4f} spent, {self.budget.total_tokens} tokens"
         )
         return day_one

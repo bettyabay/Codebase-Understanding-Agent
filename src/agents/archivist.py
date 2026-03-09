@@ -40,7 +40,7 @@ class Archivist:
         day_one_answers: Optional[dict] = None,
         repo_commit: str = "",
     ) -> None:
-        console.print("[bold cyan]Archivist[/bold cyan] — generating output artifacts…")
+        console.print("[bold cyan]Archivist[/bold cyan] - generating output artifacts...")
         output_dir.mkdir(parents=True, exist_ok=True)
 
         kg.save(output_dir)
@@ -60,12 +60,12 @@ class Archivist:
             extra={"repo_commit": repo_commit, "stats": kg.stats()},
         )
 
-        console.print(f"  [green]✓[/green] Artifacts written to [bold]{output_dir}[/bold]")
-        console.print(f"     • CODEBASE.md")
-        console.print(f"     • onboarding_brief.md")
-        console.print(f"     • module_graph.json")
-        console.print(f"     • lineage_graph.json")
-        console.print(f"     • cartography_trace.jsonl")
+        console.print(f"  [green]OK[/green] Artifacts written to [bold]{output_dir}[/bold]")
+        console.print("     - CODEBASE.md")
+        console.print("     - onboarding_brief.md")
+        console.print("     - module_graph.json")
+        console.print("     - lineage_graph.json")
+        console.print("     - cartography_trace.jsonl")
 
     def generate_CODEBASE_md(self, kg: KnowledgeGraph, day_one_answers: dict) -> str:
         top_modules = _surveyor.top_modules_by_pagerank(kg, n=5)
@@ -217,7 +217,7 @@ class Archivist:
                     metadatas=[{"path": m.path, "domain": m.domain_cluster} for m in new_modules],
                     ids=[m.path for m in new_modules],
                 )
-                console.print(f"  [green]✓[/green] Semantic index: {len(new_modules)} modules indexed")
+                console.print(f"  [green]OK[/green] Semantic index: {len(new_modules)} modules indexed")
         except Exception as exc:
             logger.warning("Semantic index build failed: %s", exc)
 
@@ -232,6 +232,7 @@ class Archivist:
     ) -> None:
         if output_dir is None:
             return
+        output_dir.mkdir(parents=True, exist_ok=True)
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agent": agent,

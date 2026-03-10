@@ -25,6 +25,12 @@ class KnowledgeGraph:
         self._datasets: dict[str, DatasetNode] = {}
         self._transformations: dict[str, TransformationNode] = {}
         self._functions: dict[str, FunctionNode] = {}
+        # Parse failures accumulated during analysis; flushed to trace by orchestrator
+        self.parse_errors: list[dict] = []
+
+    def record_parse_error(self, file_path: str, agent: str, error: str) -> None:
+        """Record a file-level parse failure to be flushed to cartography_trace.jsonl."""
+        self.parse_errors.append({"file": file_path, "agent": agent, "error": error})
 
     # ── Module graph ─────────────────────────────────────────────────────────
 

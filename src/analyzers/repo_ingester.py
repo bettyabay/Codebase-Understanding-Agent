@@ -177,3 +177,61 @@ def identify_high_velocity_files(velocity: dict[str, int], top_pct: float = 0.20
     sorted_files = sorted(velocity.items(), key=lambda x: x[1], reverse=True)
     cutoff = max(1, int(len(sorted_files) * top_pct))
     return {f for f, _ in sorted_files[:cutoff]}
+
+
+def extract_git_velocity_weekly(
+    root: Path,
+    top_n: int = 20,
+    weeks: int = 12,
+) -> tuple[list[str], list[str], list[list[int]]]:
+    """Return (file_names, week_labels, matrix) for a 2D commit-frequency heatmap.
+
+    week_labels: ISO calendar week strings like "2024-W48" (x-axis, chronological).
+    matrix: rows=files (top_n by total commits), cols=weeks (values=commit count).
+    """
+    from collections import defaultdict
+
+    since = (datetime.now() - timedelta(weeks=weeks)).strftime("%Y-%m-%d")
+    try:
+        result = subprocess.run(
+            [
+                "git", "log",
+                f"--since={since}",
+                "--format=WEEK %ad",
+                "--date=format:%G-W%V",
+                "--name-only",
+                "--no-merges",
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return [], [], []
+
+    if result.returncode != 0:
+        return [], [], []
+
+    file_week: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    current_week = ""
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if line.startswith("WEEK "):
+            current_week = line[5:]
+        elif line and current_week:
+            file_week[line][current_week] += 1
+
+    if not file_week:
+        return [], [], []
+
+    totals = {f: sum(w.values()) for f, w in file_week.items()}
+    top_files = sorted(totals, key=lambda f: totals[f], reverse=True)[:top_n]
+    all_weeks = sorted({w for counts in file_week.values() for w in counts})
+
+    matrix = [
+        [file_week[f].get(w, 0) for w in all_weeks]
+        for f in top_files
+    ]
+    display_names = [f.split("/")[-1] if "/" in f else f for f in top_files]
+    return display_names, all_weeks, matrix

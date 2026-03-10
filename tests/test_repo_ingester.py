@@ -1,6 +1,7 @@
 """Unit tests for repo_ingester helpers."""
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -186,3 +187,33 @@ class TestCloneIfRemote:
         (dest / ".git").mkdir(parents=True)
         result = clone_if_remote("https://github.com/org/repo.git", cache_dir=tmp_path)
         assert result == dest
+
+
+class TestExtractGitVelocityWeekly:
+    def test_returns_empty_for_non_git_dir(self, tmp_path):
+        from src.analyzers.repo_ingester import extract_git_velocity_weekly
+
+        files, weeks, matrix = extract_git_velocity_weekly(tmp_path)
+        assert files == []
+        assert weeks == []
+        assert matrix == []
+
+    def test_return_types_and_shape(self, tmp_path):
+        from src.analyzers.repo_ingester import extract_git_velocity_weekly
+
+        # Init a minimal git repo with one commit so we get real output
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
+        (tmp_path / "a.py").write_text("x = 1")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+
+        files, weeks, matrix = extract_git_velocity_weekly(tmp_path, top_n=5, weeks=4)
+
+        assert isinstance(files, list)
+        assert isinstance(weeks, list)
+        assert isinstance(matrix, list)
+        if files:
+            assert len(matrix) == len(files)
+            assert all(len(row) == len(weeks) for row in matrix)

@@ -74,21 +74,36 @@ def load_knowledge_graph(cartography_dir: str):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+_LANGUAGE_COLORS = {
+    "Language.PYTHON": "#377eb8",   # blue
+    "Language.SQL":    "#e6550d",   # orange-red
+    "Language.YAML":   "#74c476",   # green
+    "Language.JINJA":  "#9467bd",   # purple
+}
+
+_DOMAIN_COLORS = [
+    "#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+    "#ff7f00", "#a65628", "#f781bf", "#999999",
+]
+
+
+def _node_label(path: str) -> str:
+    """Return a display label: last 2 components joined with '/' for disambiguation."""
+    parts = path.split("/")
+    return "/".join(parts[-2:]) if len(parts) > 1 else parts[-1]
+
+
 def _build_pyvis_module_graph(kg, filter_domain: Optional[str] = None, min_pagerank: float = 0.0):
     from pyvis.network import Network
     net = Network(height="600px", width="100%", directed=True, bgcolor="#0e1117", font_color="white")
     net.set_options("""
     {
       "physics": {"barnesHut": {"gravitationalConstant": -3000, "springLength": 150}},
-      "edges": {"arrows": {"to": {"enabled": true, "scaleFactor": 0.5}}, "color": {"color": "#444"}},
+      "edges": {"arrows": {"to": {"enabled": true, "scaleFactor": 0.5}}, "color": {"color": "#555"}},
       "interaction": {"hover": true, "tooltipDelay": 100}
     }
     """)
 
-    domain_colors = [
-        "#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
-        "#ff7f00", "#a65628", "#f781bf", "#999999",
-    ]
     domain_color_map: dict[str, str] = {}
 
     nodes = kg.all_modules()
@@ -98,23 +113,29 @@ def _build_pyvis_module_graph(kg, filter_domain: Optional[str] = None, min_pager
         nodes = [n for n in nodes if n.pagerank_score >= min_pagerank]
 
     for module in nodes:
-        domain = module.domain_cluster or "uncategorized"
-        if domain not in domain_color_map:
-            domain_color_map[domain] = domain_colors[len(domain_color_map) % len(domain_colors)]
-        color = domain_color_map[domain]
+        domain = module.domain_cluster
+        if domain:
+            # LLM-assigned domain cluster → palette color
+            if domain not in domain_color_map:
+                domain_color_map[domain] = _DOMAIN_COLORS[len(domain_color_map) % len(_DOMAIN_COLORS)]
+            color = domain_color_map[domain]
+        else:
+            # No domain yet — color by language so SQL/YAML/Python are visually distinct
+            color = _LANGUAGE_COLORS.get(str(module.language), "#999999")
 
-        size = max(10, min(60, int(module.pagerank_score * 5000)))
+        size = max(12, min(60, int(module.pagerank_score * 5000) + 12))
         tooltip = (
             f"<b>{module.path}</b><br>"
-            f"Domain: {domain}<br>"
-            f"Complexity: {module.complexity_score}<br>"
+            f"Language: {module.language}<br>"
+            f"Domain: {domain or '—'}<br>"
+            f"LOC: {module.lines_of_code} · Complexity: {module.complexity_score}<br>"
             f"Velocity (30d): {module.change_velocity_30d}<br>"
             f"PageRank: {module.pagerank_score:.4f}<br>"
-            f"{'⚠ Dead code candidate' if module.is_dead_code_candidate else ''}"
+            f"{'⚠ Dead code candidate  ' if module.is_dead_code_candidate else ''}"
             f"{'🔄 In cycle' if module.in_cycle else ''}<br>"
             f"<i>{(module.purpose_statement or '')[:200]}</i>"
         )
-        net.add_node(module.path, label=module.path.split("/")[-1], color=color,
+        net.add_node(module.path, label=_node_label(module.path), color=color,
                      size=size, title=tooltip)
 
     node_ids = {m.path for m in nodes}
@@ -188,24 +209,45 @@ def page_system_map(kg) -> None:
     st.header("System Map")
     st.caption("Module dependency graph — nodes sized by PageRank, colored by domain cluster")
 
+    all_modules = kg.all_modules()
+
+    if not all_modules:
+        st.info(
+            "No modules found in the graph. This usually means the analysis has not been "
+            "run yet, or the repo contains no source files in the expected languages.\n\n"
+            "Re-run `cartographer analyze <repo>` to regenerate the graph."
+        )
+        return
+
     col1, col2 = st.columns([2, 1])
     with col2:
-        domains = sorted({m.domain_cluster or "uncategorized" for m in kg.all_modules()})
+        domains = sorted({m.domain_cluster or "uncategorized" for m in all_modules})
         selected_domain = st.selectbox("Filter by domain", ["All"] + domains)
         min_pr = st.slider("Min PageRank", 0.0, 0.01, 0.0, step=0.0001, format="%.4f")
 
     filter_domain = None if selected_domain == "All" else selected_domain
 
     net = _build_pyvis_module_graph(kg, filter_domain=filter_domain, min_pagerank=min_pr)
-    html = net.generate_html()
+
+    # Guard: if filters removed all nodes, warn rather than show black canvas
+    visible_modules = [
+        m for m in all_modules
+        if (filter_domain is None or m.domain_cluster == filter_domain)
+        and m.pagerank_score >= min_pr
+    ]
     with col1:
-        st.components.v1.html(html, height=620, scrolling=False)
+        if not visible_modules:
+            st.warning("No nodes match the current filters. Try relaxing the PageRank threshold or domain filter.")
+        else:
+            html = net.generate_html()
+            st.components.v1.html(html, height=620, scrolling=False)
 
     with col2:
         st.subheader("Top Modules (PageRank)")
-        top = sorted(kg.all_modules(), key=lambda m: m.pagerank_score, reverse=True)[:10]
+        top = sorted(all_modules, key=lambda m: m.pagerank_score, reverse=True)[:10]
         for m in top:
-            st.markdown(f"**`{m.path.split('/')[-1]}`** — {m.pagerank_score:.4f}")
+            lang_str = str(m.language).replace("Language.", "") if m.language else ""
+            st.markdown(f"**`{_node_label(m.path)}`** `{lang_str}` — {m.pagerank_score:.4f}")
             if m.purpose_statement:
                 st.caption(m.purpose_statement[:100])
 
@@ -322,50 +364,98 @@ def page_domain_map(kg) -> None:
     st.dataframe(domain_modules[["module", "lines", "velocity", "purpose"]], use_container_width=True)
 
 
-def page_git_heatmap(kg) -> None:
+def page_git_heatmap(kg, cartography_dir: Path) -> None:
     st.header("Git Velocity Heatmap")
-    st.caption("Files by change frequency — surfaces high-churn pain points")
+    st.caption("Weekly commit frequency per file — surfaces high-churn pain points over time")
 
+    import json as _json
     import plotly.graph_objects as go
-    import pandas as pd
 
-    modules = [m for m in kg.all_modules() if m.change_velocity_30d > 0]
-    if not modules:
-        st.info("No git velocity data available. Make sure the repo has a git history.")
-        return
+    weekly_path = cartography_dir / "git_velocity_weekly.json"
 
-    modules_sorted = sorted(modules, key=lambda m: m.change_velocity_30d, reverse=True)[:30]
-    names = [m.path.split("/")[-1] for m in modules_sorted]
-    values = [m.change_velocity_30d for m in modules_sorted]
-    paths = [m.path for m in modules_sorted]
+    if weekly_path.exists():
+        try:
+            data = _json.loads(weekly_path.read_text(encoding="utf-8"))
+            files: list[str] = data.get("files", [])
+            weeks: list[str] = data.get("weeks", [])
+            matrix: list[list[int]] = data.get("matrix", [])
+        except Exception:
+            files, weeks, matrix = [], [], []
+    else:
+        files, weeks, matrix = [], [], []
 
-    fig = go.Figure(go.Bar(
-        x=values,
-        y=names,
-        orientation="h",
-        marker=dict(
-            color=values,
-            colorscale="RdYlGn_r",
-            showscale=True,
-        ),
-        text=[f"{v} commits" for v in values],
-        hovertext=paths,
-        hoverinfo="text",
-    ))
-    fig.update_layout(
-        title="Top 30 Files by Commit Frequency (last 30 days)",
-        xaxis_title="Commit count",
-        yaxis=dict(autorange="reversed"),
-        paper_bgcolor="#0e1117",
-        plot_bgcolor="#0e1117",
-        font_color="white",
-        height=700,
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    if files and weeks and matrix:
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            top_n = st.slider("Files shown", min_value=5, max_value=min(30, len(files)), value=min(20, len(files)))
+        files = files[:top_n]
+        matrix = matrix[:top_n]
 
-    # Highlight the high-velocity 20%
-    top_20pct = max(1, len(modules_sorted) // 5)
-    st.info(f"Top {top_20pct} files (top 20%) are the high-churn core — likely pain points.")
+        fig = go.Figure(go.Heatmap(
+            z=matrix,
+            x=weeks,
+            y=files,
+            colorscale="YlOrRd",
+            hoverongaps=False,
+            hovertemplate="<b>%{y}</b><br>Week: %{x}<br>Commits: %{z}<extra></extra>",
+            colorbar=dict(title="Commits"),
+        ))
+        fig.update_layout(
+            title=f"Weekly Commit Frequency — top {top_n} files (last {len(weeks)} weeks)",
+            xaxis=dict(title="Week", tickangle=-45, tickfont=dict(size=10)),
+            yaxis=dict(title="File", autorange="reversed", tickfont=dict(size=10)),
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#0e1117",
+            font_color="white",
+            height=max(400, top_n * 28),
+            margin=dict(l=200, r=40, t=60, b=80),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Summary callout
+        row_totals = [sum(row) for row in matrix]
+        top_file = files[row_totals.index(max(row_totals))] if row_totals else ""
+        if top_file:
+            st.info(
+                f"Highest churn: **{top_file}** ({max(row_totals)} commits over {len(weeks)} weeks) — "
+                "likely a pain-point or shared dependency."
+            )
+    else:
+        # Fallback: bar chart from KG module velocity data
+        modules = [m for m in kg.all_modules() if m.change_velocity_30d > 0]
+        if not modules:
+            st.info(
+                "No git velocity data found. Re-run analysis or ensure the repo has git history.\n\n"
+                "Tip: `git_velocity_weekly.json` is generated automatically during `analyze`."
+            )
+            return
+
+        modules_sorted = sorted(modules, key=lambda m: m.change_velocity_30d, reverse=True)[:30]
+        names = [m.path.split("/")[-1] for m in modules_sorted]
+        values = [m.change_velocity_30d for m in modules_sorted]
+        paths = [m.path for m in modules_sorted]
+
+        fig = go.Figure(go.Bar(
+            x=values,
+            y=names,
+            orientation="h",
+            marker=dict(color=values, colorscale="YlOrRd", showscale=True),
+            text=[f"{v} commits" for v in values],
+            hovertext=paths,
+            hoverinfo="text",
+        ))
+        fig.update_layout(
+            title="Top 30 Files by Commit Frequency (last 30 days) — run analysis to get weekly breakdown",
+            xaxis_title="Commit count",
+            yaxis=dict(autorange="reversed"),
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#0e1117",
+            font_color="white",
+            height=700,
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        top_20pct = max(1, len(modules_sorted) // 5)
+        st.info(f"Top {top_20pct} files (top 20%) are the high-churn core — likely pain points.")
 
 
 def page_navigator_chat(kg, cartography_dir: Path) -> None:
@@ -487,7 +577,7 @@ def main() -> None:
     elif page == "Domain Architecture Map":
         page_domain_map(kg)
     elif page == "Git Velocity Heatmap":
-        page_git_heatmap(kg)
+        page_git_heatmap(kg, CARTOGRAPHY_DIR)
     elif page == "Navigator Chat":
         page_navigator_chat(kg, CARTOGRAPHY_DIR)
 

@@ -15,6 +15,15 @@ from src.models.nodes import ModuleNode
 logger = logging.getLogger(__name__)
 console = Console()
 
+_RATE_LIMIT_MARKERS = ("429", "resource_exhausted", "quota", "rate limit", "ratelimit", "too many requests")
+
+
+def _is_rate_limit(exc: Exception) -> bool:
+    """Return True if the exception looks like an API rate-limit / quota error."""
+    msg = str(exc).lower()
+    return any(marker in msg for marker in _RATE_LIMIT_MARKERS)
+
+
 FIVE_QUESTIONS = [
     "What is the primary data ingestion path?",
     "What are the 3–5 most critical output datasets or endpoints?",
@@ -27,7 +36,8 @@ FIVE_QUESTIONS = [
 class ContextWindowBudget:
     """Tracks token usage and routes LLM calls to appropriate models."""
 
-    COST_PER_1K = {"gemini-flash": 0.000075, "gpt-4o-mini": 0.00015, "gpt-4o": 0.005}
+    # gemini-2.5-flash free tier = $0 on Google AI Studio
+    COST_PER_1K = {"gemini-flash": 0.0, "gpt-4o-mini": 0.00015, "gpt-4o": 0.005}
 
     def __init__(self, budget_usd: float = 2.0) -> None:
         self.budget_usd = budget_usd
@@ -259,31 +269,71 @@ class Semanticist:
 
         return None
 
-    def _call_llm(self, prompt: str, model: str) -> str:
+    def _call_llm(self, prompt: str, model: str, _retries: int = 1) -> str:
+        """Call the configured LLM with retry and Groq rate-limit fallback.
+
+        Flow: primary (Gemini/OpenAI) → retry once → Groq fallback on rate-limit.
+        """
+        import time
+
         client = self._get_llm_client()
         if client is None:
-            return ""
+            return self._call_groq(prompt)
 
         openai_models = {"gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"}
 
-        if model in openai_models or hasattr(client, "chat"):
-            actual_model = "gpt-4o-mini" if model == "gemini-flash" else model
+        for attempt in range(_retries + 1):
+            try:
+                if model in openai_models or hasattr(client, "chat"):
+                    actual_model = "gpt-4o-mini" if model == "gemini-flash" else model
+                    response = client.chat.completions.create(
+                        model=actual_model,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=1024,
+                        temperature=0.2,
+                    )
+                    return response.choices[0].message.content or ""
+                else:
+                    # Google Generative AI (Gemini 2.5 Flash free tier)
+                    flash_model = client.GenerativeModel("gemini-2.5-flash")
+                    response = flash_model.generate_content(prompt)
+                    return response.text or ""
+            except Exception as exc:
+                if _is_rate_limit(exc):
+                    logger.warning("Rate limit hit — falling back to Groq: %s", exc)
+                    return self._call_groq(prompt)
+                if attempt < _retries:
+                    wait = 2 ** attempt
+                    logger.warning(
+                        "LLM call failed (attempt %d/%d): %s — retrying in %ds",
+                        attempt + 1, _retries + 1, exc, wait,
+                    )
+                    time.sleep(wait)
+                else:
+                    logger.warning("LLM call failed after %d attempts: %s — trying Groq", _retries + 1, exc)
+                    return self._call_groq(prompt)
+        return ""
+
+    def _call_groq(self, prompt: str) -> str:
+        """Call Groq's Llama model as a rate-limit / last-resort fallback."""
+        # Accept GROQ_API_KEY or the common GROK_API_KEY typo
+        groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
+        if not groq_key:
+            return ""
+        try:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
             response = client.chat.completions.create(
-                model=actual_model,
+                model=model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=1024,
                 temperature=0.2,
             )
             return response.choices[0].message.content or ""
-        else:
-            # Google Generative AI
-            try:
-                flash_model = client.GenerativeModel("gemini-1.5-flash")
-                response = flash_model.generate_content(prompt)
-                return response.text or ""
-            except Exception as exc:
-                logger.warning("Gemini call failed: %s", exc)
-                return ""
+        except Exception as exc:
+            logger.warning("Groq fallback failed: %s", exc)
+            return ""
 
     def _embed_texts(self, texts: list[str]):
         try:

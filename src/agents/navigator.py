@@ -134,7 +134,10 @@ def explain_module(module_path: str, kg: KnowledgeGraph, repo_path: Optional[Pat
             f"key functions, and how it fits into the larger system.\n\n"
             f"```python\n{source_code}\n```"
         )
-        explanation = _semanticist._call_llm(prompt, "gpt-4o-mini")
+        model = _semanticist.budget.select_model(
+            _semanticist.budget.estimate_tokens(source_code), synthesis=True
+        )
+        explanation = _semanticist._call_llm(prompt, model)
         return f"[LLM inference from source]\n\n{base_info}\n**Explanation**:\n{explanation}"
 
     return f"[static analysis only]\n\n{base_info}\nSource code not available for deep explanation."
@@ -193,20 +196,55 @@ def build_navigator_graph(kg: KnowledgeGraph, repo_path: Optional[Path] = None, 
         return None
 
 
+_NAVIGATOR_MODEL = "gemini-2.5-flash"
+# Respects GROQ_MODEL env var; also accepts the common GROK_API_KEY typo
+_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+
 def _get_llm_for_navigator():
-    if os.getenv("OPENAI_API_KEY"):
-        try:
-            from langchain_openai import ChatOpenAI
-            return ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        except ImportError:
-            pass
+    """Build the Navigator LLM with automatic fallbacks: Gemini → Groq → OpenAI.
+
+    Uses LangChain's .with_fallbacks() so rate-limit errors on Gemini transparently
+    retry the next provider without restarting the agent.
+    """
+    candidates = []
+
+    # 1. Gemini 2.5 Flash (primary, free tier)
     if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            return ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+            api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            candidates.append(
+                ChatGoogleGenerativeAI(model=_NAVIGATOR_MODEL, google_api_key=api_key, temperature=0)
+            )
         except ImportError:
             pass
-    return None
+
+    # 2. Groq Llama (rate-limit fallback) — accept GROQ_API_KEY or the common GROK_API_KEY typo
+    groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
+    if groq_key:
+        try:
+            from langchain_groq import ChatGroq
+            candidates.append(ChatGroq(model=_GROQ_MODEL, api_key=groq_key, temperature=0))
+        except ImportError:
+            pass
+
+    # 3. OpenAI (last resort)
+    if os.getenv("OPENAI_API_KEY"):
+        try:
+            from langchain_openai import ChatOpenAI
+            candidates.append(ChatOpenAI(model="gpt-4o-mini", temperature=0))
+        except ImportError:
+            pass
+
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+
+    # Wire all fallbacks; exceptions_to_handle covers 429 / quota errors
+    primary = candidates[0]
+    return primary.with_fallbacks(candidates[1:])
 
 
 class Navigator:

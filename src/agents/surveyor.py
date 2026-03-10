@@ -39,8 +39,15 @@ class Surveyor:
         high_velocity = identify_high_velocity_files(velocity)
 
         python_files = [f for f in files if f.language == Language.PYTHON]
-        console.print(f"  Found [yellow]{len(files)}[/yellow] source files "
-                      f"([yellow]{len(python_files)}[/yellow] Python)")
+        sql_files = [f for f in files if f.language == Language.SQL]
+        yaml_files = [f for f in files if f.language == Language.YAML]
+
+        console.print(
+            f"  Found [yellow]{len(files)}[/yellow] source files "
+            f"([yellow]{len(python_files)}[/yellow] Python, "
+            f"[yellow]{len(sql_files)}[/yellow] SQL, "
+            f"[yellow]{len(yaml_files)}[/yellow] YAML)"
+        )
 
         with Progress(TextColumn("{task.description}"), console=console) as progress:
             task = progress.add_task("Parsing modules...", total=len(python_files))
@@ -48,6 +55,11 @@ class Surveyor:
             for record in python_files:
                 self._analyze_python_file(record, kg, velocity, high_velocity)
                 progress.advance(task)
+
+        # Add SQL and YAML files as lightweight module nodes so they appear
+        # in the System Map and are eligible for PageRank and velocity scoring.
+        for record in sql_files + yaml_files:
+            self._add_file_as_module(record, kg, velocity, high_velocity)
 
         self._compute_pagerank(kg)
         self._detect_cycles(kg)
@@ -71,6 +83,7 @@ class Surveyor:
             source = record.path.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
             logger.warning("Cannot read %s: %s", record.path, exc)
+            kg.record_parse_error(str(record.path), "surveyor", str(exc))
             return
 
         rel_path = str(record.path)
@@ -103,6 +116,32 @@ class Surveyor:
         for imp in imports:
             normalized = imp.replace(".", "/")
             kg.add_import_edge(ImportEdge(source_module=rel_key, target_module=normalized))
+
+    def _add_file_as_module(
+        self,
+        record: FileRecord,
+        kg: KnowledgeGraph,
+        velocity: dict[str, int],
+        high_velocity: set[str],
+    ) -> None:
+        """Add a SQL or YAML file as a lightweight ModuleNode (no AST parsing)."""
+        rel_key = _to_module_key(record.path)
+        if rel_key in {m.path for m in kg.all_modules()}:
+            return  # already registered by Python parser
+        try:
+            loc = len(record.path.read_text(encoding="utf-8", errors="replace").splitlines())
+        except OSError as exc:
+            kg.record_parse_error(str(record.path), "surveyor", str(exc))
+            return
+        vel = velocity.get(record.path.name, velocity.get(str(record.path), 0))
+        module = ModuleNode(
+            path=rel_key,
+            language=record.language,
+            change_velocity_30d=vel,
+            last_modified=record.last_modified,
+            lines_of_code=loc,
+        )
+        kg.add_module(module)
 
     def _compute_pagerank(self, kg: KnowledgeGraph) -> None:
         if kg.module_graph.number_of_nodes() == 0:
@@ -147,15 +186,21 @@ class Surveyor:
         return sorted(kg.all_modules(), key=lambda m: m.pagerank_score, reverse=True)[:n]
 
 
+_ROOT_ANCHORS = {"src", "lib", "app", "models", "seeds", "macros", "analyses"}
+_STRIP_EXTENSIONS = {".py", ".sql", ".yml", ".yaml"}
+
+
 def _to_module_key(path: Path) -> str:
-    """Normalize a file path to a dot-style module key."""
+    """Normalize a file path to a slash-separated module key, stripping the extension."""
     parts = path.parts
     try:
-        src_idx = next(i for i, p in enumerate(parts) if p in ("src", "lib", "app"))
+        src_idx = next(i for i, p in enumerate(parts) if p in _ROOT_ANCHORS)
         parts = parts[src_idx:]
     except StopIteration:
         parts = parts[-3:] if len(parts) > 3 else parts
     key = "/".join(parts)
-    if key.endswith(".py"):
-        key = key[:-3]
+    for ext in _STRIP_EXTENSIONS:
+        if key.endswith(ext):
+            key = key[: -len(ext)]
+            break
     return key

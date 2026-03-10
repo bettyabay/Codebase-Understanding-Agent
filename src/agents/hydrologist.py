@@ -115,7 +115,12 @@ class Hydrologist:
                     ))
 
     def _ingest_sql_file(self, path: Path, kg: KnowledgeGraph) -> None:
-        deps_list = _sql_analyzer.analyze_file(path)
+        try:
+            deps_list = _sql_analyzer.analyze_file(path)
+        except Exception as exc:
+            logger.warning("SQL lineage extraction failed for %s: %s", path, exc)
+            kg.record_parse_error(str(path), "hydrologist", str(exc))
+            return
         for dep in deps_list:
             if not dep.target_table:
                 continue
@@ -148,7 +153,12 @@ class Hydrologist:
 
     def _ingest_airflow_dags(self, py_files: list, kg: KnowledgeGraph) -> None:
         for record in py_files:
-            topology = _dag_parser.parse_dag_file(record.path)
+            try:
+                topology = _dag_parser.parse_dag_file(record.path)
+            except Exception as exc:
+                logger.warning("Airflow DAG parse failed for %s: %s", record.path, exc)
+                kg.record_parse_error(str(record.path), "hydrologist", str(exc))
+                continue
             if topology is None:
                 continue
             # Add tasks as transformation nodes

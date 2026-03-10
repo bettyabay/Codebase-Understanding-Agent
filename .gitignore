@@ -16,7 +16,8 @@ venv/
 .pytest_cache/
 .coverage
 
-# Cartography output (commit per-repo, not globally)
+# Generated analysis output — not committed
+.cartography/
 repo_cache/
 
 # Streamlit
@@ -25,3 +26,6 @@ repo_cache/
 # IDE
 .vscode/
 .idea/
+
+
+.env

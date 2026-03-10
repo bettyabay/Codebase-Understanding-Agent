@@ -201,3 +201,20 @@ class TestSaveLoad:
         kg.save(tmp_path)
         data = json.loads((tmp_path / "module_graph.json").read_text())
         assert "nodes" in data
+
+
+class TestParseErrors:
+    def test_record_and_clear(self):
+        kg = KnowledgeGraph()
+        assert kg.parse_errors == []
+
+        kg.record_parse_error("src/bad.py", "surveyor", "SyntaxError: invalid syntax")
+        kg.record_parse_error("models/broken.sql", "hydrologist", "Unexpected token")
+
+        assert len(kg.parse_errors) == 2
+        assert kg.parse_errors[0]["file"] == "src/bad.py"
+        assert kg.parse_errors[0]["agent"] == "surveyor"
+        assert kg.parse_errors[1]["agent"] == "hydrologist"
+
+        kg.parse_errors.clear()
+        assert kg.parse_errors == []

@@ -12,7 +12,7 @@ from src.agents.archivist import Archivist
 from src.agents.hydrologist import Hydrologist
 from src.agents.semanticist import Semanticist
 from src.agents.surveyor import Surveyor
-from src.analyzers.repo_ingester import clone_if_remote, derive_repo_name
+from src.analyzers.repo_ingester import clone_if_remote, derive_repo_name, extract_git_velocity_weekly
 from src.graph.knowledge_graph import KnowledgeGraph
 
 logger = logging.getLogger(__name__)
@@ -67,12 +67,18 @@ class Orchestrator:
         self.surveyor.analyze(repo_path, kg)
         self.archivist.log_trace("surveyor_complete", "surveyor", "static_analysis", 1.0, self.output_dir,
                                  extra={"modules": len(kg.all_modules())})
+        self._flush_parse_errors(kg)
 
         # Phase 2: Hydrologist
         self.archivist.log_trace("hydrologist_start", "hydrologist", "data_flow_analysis", 1.0, self.output_dir)
         self.hydrologist.analyze(repo_path, kg)
         self.archivist.log_trace("hydrologist_complete", "hydrologist", "data_flow_analysis", 1.0, self.output_dir,
                                  extra={"datasets": len(kg.all_datasets())})
+        self._flush_parse_errors(kg)
+
+        # Bridge SQL/dbt lineage into the module graph so the System Map shows
+        # SQL model dependencies (e.g. orders.sql → stg_orders.sql).
+        self._bridge_sql_lineage_to_modules(kg)
 
         # Phase 3: Semanticist (optional - requires API key)
         day_one_answers: dict = {}
@@ -87,6 +93,14 @@ class Orchestrator:
         # Build semantic index (if purpose statements were generated)
         if any(m.purpose_statement for m in kg.all_modules()):
             self.archivist.build_semantic_index(kg, self.output_dir)
+
+        # Save weekly git velocity data for 2D heatmap
+        files, weeks, matrix = extract_git_velocity_weekly(repo_path)
+        weekly_path = self.output_dir / "git_velocity_weekly.json"
+        weekly_path.write_text(
+            json.dumps({"files": files, "weeks": weeks, "matrix": matrix}),
+            encoding="utf-8",
+        )
 
         console.print(f"\n[bold green]Analysis complete![/bold green] Output: [bold]{self.output_dir}[/bold]")
         console.print(f"  Repo cache: [dim]repo_cache/{self.output_dir.name}[/dim]")
@@ -153,6 +167,55 @@ class Orchestrator:
         except Exception:
             pass
         return None
+
+    def _bridge_sql_lineage_to_modules(self, kg) -> None:
+        """Wire SQL model dependencies (from lineage) as ImportEdges in the module graph.
+
+        This makes SQL-only repos (e.g. dbt) show a meaningful graph in the System Map.
+        """
+        from pathlib import Path as _Path
+        from src.models.edges import ImportEdge
+        from src.agents.surveyor import _to_module_key
+
+        # Map each dataset name to the module key of the SQL file that produces it
+        dataset_to_module: dict[str, str] = {}
+        for transform in kg.all_transformations():
+            if transform.transformation_type != "sql" or not transform.source_file:
+                continue
+            module_key = _to_module_key(_Path(transform.source_file))
+            for target_ds in transform.target_datasets:
+                dataset_to_module[target_ds] = module_key
+
+        # For each SQL transformation, create ImportEdges from consuming module → producing module
+        added = 0
+        for transform in kg.all_transformations():
+            if transform.transformation_type != "sql" or not transform.source_file:
+                continue
+            consumer_key = _to_module_key(_Path(transform.source_file))
+            for src_ds in transform.source_datasets:
+                producer_key = dataset_to_module.get(src_ds)
+                if producer_key and producer_key != consumer_key:
+                    kg.add_import_edge(ImportEdge(
+                        source_module=consumer_key,
+                        target_module=producer_key,
+                    ))
+                    added += 1
+
+        if added:
+            console.print(f"  [dim]Bridged {added} SQL lineage → module import edges[/dim]")
+
+    def _flush_parse_errors(self, kg) -> None:
+        """Write accumulated parse errors to the trace file (confidence=0.0) and clear the list."""
+        for err in kg.parse_errors:
+            self.archivist.log_trace(
+                action="parse_error",
+                agent=err["agent"],
+                evidence_source=err["file"],
+                confidence=0.0,
+                output_dir=self.output_dir,
+                extra={"error": err["error"]},
+            )
+        kg.parse_errors.clear()
 
     def _get_changed_files(self, repo_path: Path, since_commit: str) -> list[Path]:
         try:

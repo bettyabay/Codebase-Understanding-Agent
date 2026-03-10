@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timedelta
@@ -42,16 +43,36 @@ class FileRecord(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-def clone_if_remote(repo_path: str, target_dir: Optional[Path] = None) -> Path:
-    """Clone a GitHub URL to a temp directory, or return the local path unchanged."""
+def derive_repo_name(repo_path: str) -> str:
+    """Derive a short filesystem-safe name from a repo URL or local path.
+
+    Examples:
+      https://github.com/dbt-labs/jaffle_shop  → jaffle_shop
+      https://github.com/apache/airflow.git    → airflow
+      /home/user/my-project                    → my_project
+    """
+    name = repo_path.rstrip("/")
+    if name.endswith(".git"):
+        name = name[:-4]
+    name = name.split("/")[-1]
+    name = re.sub(r"[^\w]", "_", name).lower().strip("_")
+    return name or "unknown_repo"
+
+
+def clone_if_remote(repo_path: str, cache_dir: Optional[Path] = None) -> Path:
+    """Clone a GitHub URL into cache_dir/<repo_name>/, or return the local path unchanged.
+
+    The destination is always a named subdirectory so multiple repos can coexist
+    under the same cache root without overwriting each other.
+    """
     if repo_path.startswith(("http://", "https://", "git@")):
-        dest = target_dir or Path(tempfile.mkdtemp(prefix="cartographer_"))
-        if dest.exists():
-            if (dest / ".git").exists():
-                console.print(f"[cyan]Using existing clone[/cyan] at {dest}")
-                return dest
-            if any(dest.iterdir()):
-                dest = dest.parent / f"{dest.name}_{int(datetime.now().timestamp())}"
+        repo_name = derive_repo_name(repo_path)
+        root = cache_dir or Path(tempfile.mkdtemp(prefix="cartographer_"))
+        dest = root / repo_name
+        if dest.exists() and (dest / ".git").exists():
+            console.print(f"[cyan]Using existing clone[/cyan] at {dest}")
+            return dest
+        dest.mkdir(parents=True, exist_ok=True)
         console.print(f"[cyan]Cloning[/cyan] {repo_path} -> {dest}")
         try:
             import git

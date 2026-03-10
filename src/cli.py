@@ -23,7 +23,8 @@ console = Console()
 @app.command()
 def analyze(
     repo: str = typer.Argument(..., help="Local path or GitHub URL to analyze"),
-    output: Path = typer.Option(Path(".cartography"), "--output", "-o", help="Output directory for artifacts"),
+    name: Optional[str] = typer.Option(None, "--name", "-n", help="Short name for this repo (e.g. jaffle_shop). Defaults to the repo's folder/URL slug."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Override output directory. Defaults to .cartography/<name>/"),
     skip_llm: bool = typer.Option(False, "--skip-llm", help="Skip LLM analysis (faster, no API key needed)"),
     incremental: bool = typer.Option(False, "--incremental", "-i", help="Re-analyze only changed files"),
 ) -> None:
@@ -31,12 +32,12 @@ def analyze(
     from src.orchestrator import Orchestrator
 
     orchestrator = Orchestrator(output_dir=output)
-    orchestrator.analyze(repo, skip_llm=skip_llm, incremental=incremental)
+    orchestrator.analyze(repo, repo_name=name, skip_llm=skip_llm, incremental=incremental)
 
 
 @app.command()
 def query(
-    cartography_dir: Path = typer.Option(Path(".cartography"), "--cartography-dir", "-c", help="Path to .cartography/ output"),
+    cartography_dir: Path = typer.Option(Path(".cartography"), "--cartography-dir", "-c", help="Path to a specific .cartography/<name>/ directory"),
     repo: Optional[str] = typer.Option(None, "--repo", help="Original repo path (for source code lookup)"),
 ) -> None:
     """Start an interactive query session (Navigator agent)."""
@@ -45,6 +46,7 @@ def query(
 
     if not cartography_dir.exists():
         console.print(f"[red]Error:[/red] {cartography_dir} not found. Run 'analyze' first.")
+        _print_available_repos()
         raise typer.Exit(1)
 
     console.print(f"Loading knowledge graph from [cyan]{cartography_dir}[/cyan]…")
@@ -63,12 +65,13 @@ def query(
 
 @app.command()
 def dashboard(
-    cartography_dir: Path = typer.Option(Path(".cartography"), "--cartography-dir", "-c", help="Path to .cartography/ output"),
+    cartography_dir: Path = typer.Option(Path(".cartography"), "--cartography-dir", "-c", help="Root .cartography/ directory (shows repo selector) or a specific .cartography/<name>/ path"),
     port: int = typer.Option(8501, "--port", "-p", help="Streamlit port"),
 ) -> None:
     """Launch the interactive visualization dashboard."""
     if not cartography_dir.exists():
         console.print(f"[red]Error:[/red] {cartography_dir} not found. Run 'analyze' first.")
+        _print_available_repos()
         raise typer.Exit(1)
 
     dashboard_script = Path(__file__).parent / "dashboard" / "app.py"
@@ -94,13 +97,26 @@ def dashboard(
 @app.command()
 def update(
     repo: str = typer.Argument(..., help="Local path or GitHub URL"),
-    output: Path = typer.Option(Path(".cartography"), "--output", "-o"),
+    name: Optional[str] = typer.Option(None, "--name", "-n", help="Repo name used during the original analyze run"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Override output directory"),
 ) -> None:
     """Incrementally re-analyze only files changed since the last run."""
     from src.orchestrator import Orchestrator
 
     orchestrator = Orchestrator(output_dir=output)
-    orchestrator.analyze(repo, incremental=True)
+    orchestrator.analyze(repo, repo_name=name, incremental=True)
+
+
+def _print_available_repos() -> None:
+    """Print a list of already-analyzed repos found under .cartography/."""
+    root = Path(".cartography")
+    if not root.exists():
+        return
+    repos = [d.name for d in sorted(root.iterdir()) if d.is_dir() and (d / "lineage_graph.json").exists()]
+    if repos:
+        console.print("\n[bold]Available analyzed repos:[/bold]")
+        for r in repos:
+            console.print(f"  --cartography-dir .cartography/{r}")
 
 
 if __name__ == "__main__":

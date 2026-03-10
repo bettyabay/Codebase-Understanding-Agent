@@ -275,14 +275,20 @@ class YAMLASTAnalyzer:
             return _yaml_regex_keys(source)
 
         keys: list[str] = []
-        for node in tree.root_node.children:
+        # The tree-sitter YAML grammar nests the top-level mapping under
+        # stream → document → block_node → block_mapping, so we search the
+        # full tree for the first block_mapping rather than only root children.
+        for node in _iter_nodes(tree.root_node):
             if node.type == "block_mapping":
                 for child in node.children:
                     if child.type == "block_mapping_pair":
                         key_node = child.child_by_field_name("key")
                         if key_node:
                             keys.append(key_node.text.decode("utf-8").strip('"\''))
-        return keys
+                break  # only the top-level mapping
+
+        # Fall back to regex if tree-sitter found nothing
+        return keys if keys else _yaml_regex_keys(source)
 
 
 # ── Regex fallbacks (when tree-sitter is unavailable) ─────────────────────────

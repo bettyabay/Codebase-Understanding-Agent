@@ -27,7 +27,24 @@ def _get_cartography_dir() -> Path:
     return Path(args.cartography_dir)
 
 
-CARTOGRAPHY_DIR = _get_cartography_dir()
+_RAW_CARTOGRAPHY_DIR = _get_cartography_dir()
+
+
+def _discover_repos(root: Path) -> list[str]:
+    """Return names of repos that have been analyzed under root."""
+    if not root.exists():
+        return []
+    # A valid repo output dir contains at least a lineage_graph.json
+    return sorted(
+        d.name for d in root.iterdir()
+        if d.is_dir() and (d / "lineage_graph.json").exists()
+    )
+
+
+def _resolve_cartography_dir(raw: Path) -> Path:
+    """If raw points at a root .cartography/ folder (not a named sub-dir), return raw.
+    The sidebar selector will then narrow it down to a specific repo at runtime."""
+    return raw
 
 
 # ── Data loading (cached) ─────────────────────────────────────────────────────
@@ -351,7 +368,7 @@ def page_git_heatmap(kg) -> None:
     st.info(f"Top {top_20pct} files (top 20%) are the high-churn core — likely pain points.")
 
 
-def page_navigator_chat(kg) -> None:
+def page_navigator_chat(kg, cartography_dir: Path) -> None:
     st.header("Navigator Chat")
     st.caption("Ask questions about the codebase in natural language")
 
@@ -371,7 +388,7 @@ def page_navigator_chat(kg) -> None:
         with st.chat_message("assistant"):
             with st.spinner("Querying knowledge graph…"):
                 from src.agents.navigator import Navigator
-                nav = Navigator(kg, cartography_dir=CARTOGRAPHY_DIR)
+                nav = Navigator(kg, cartography_dir=cartography_dir)
                 response = nav.query(prompt)
 
             # Render tool usage as an expander
@@ -399,10 +416,41 @@ def main() -> None:
     )
 
     st.sidebar.title("🗺️ Brownfield Cartographer")
-    st.sidebar.caption(f"Knowledge graph: `{CARTOGRAPHY_DIR}`")
+
+    # ── Repo selector ─────────────────────────────────────────────────────────
+    root = _RAW_CARTOGRAPHY_DIR
+    available_repos = _discover_repos(root)
+
+    # If --cartography-dir already points at a specific named sub-dir, use it directly.
+    # Otherwise show a selector so the user can pick from analyzed repos.
+    if available_repos and (root / available_repos[0]).resolve() != root.resolve():
+        # Root contains named subdirectories → show a picker
+        if len(available_repos) == 0:
+            st.error(
+                f"No analyzed repos found under `{root}`. "
+                "Run `cartographer analyze <url>` first."
+            )
+            st.stop()
+
+        selected_repo = st.sidebar.selectbox(
+            "Repository",
+            available_repos,
+            help="Switch between analyzed repos",
+        )
+        CARTOGRAPHY_DIR = root / selected_repo
+    else:
+        # Pointed directly at a repo output dir (e.g. .cartography/jaffle_shop)
+        CARTOGRAPHY_DIR = root
+        repo_name = root.name
+        st.sidebar.markdown(f"**Repo:** `{repo_name}`")
+
+    st.sidebar.caption(f"`{CARTOGRAPHY_DIR}`")
 
     if not CARTOGRAPHY_DIR.exists():
-        st.error(f"Cartography directory `{CARTOGRAPHY_DIR}` not found. Run `cartographer analyze <repo>` first.")
+        st.error(
+            f"Cartography directory `{CARTOGRAPHY_DIR}` not found. "
+            "Run `cartographer analyze <repo>` first."
+        )
         st.stop()
 
     with st.spinner("Loading knowledge graph…"):
@@ -441,7 +489,7 @@ def main() -> None:
     elif page == "Git Velocity Heatmap":
         page_git_heatmap(kg)
     elif page == "Navigator Chat":
-        page_navigator_chat(kg)
+        page_navigator_chat(kg, CARTOGRAPHY_DIR)
 
 
 main()

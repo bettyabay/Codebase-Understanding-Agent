@@ -137,7 +137,8 @@ class DbtProjectParser:
 _TASK_ID_RE = re.compile(r"task_id\s*=\s*['\"]([^'\"]+)['\"]")
 _OPERATOR_RE = re.compile(r"(\w+Operator|\w+Sensor|\w+Hook)\s*\(")
 _DAG_ID_RE = re.compile(r"dag_id\s*=\s*['\"]([^'\"]+)['\"]")
-_DEP_RSHIFT_RE = re.compile(r"([\w_]+)\s*>>\s*([\w_]+)")
+# Matches a full chained expression like: a >> b >> c >> d
+_DEP_RSHIFT_CHAIN_RE = re.compile(r"[\w_]+(?:\s*>>\s*[\w_]+)+")
 _DEP_LSHIFT_RE = re.compile(r"([\w_]+)\s*<<\s*([\w_]+)")
 _SET_UPSTREAM_RE = re.compile(r"([\w_]+)\.set_upstream\(\s*([\w_]+)\s*\)")
 _SET_DOWNSTREAM_RE = re.compile(r"([\w_]+)\.set_downstream\(\s*([\w_]+)\s*\)")
@@ -172,8 +173,11 @@ class AirflowDAGParser:
 
         deps: list[tuple[str, str]] = []
 
-        for m in _DEP_RSHIFT_RE.finditer(source):
-            deps.append((m.group(1), m.group(2)))
+        # Expand chained >> expressions: a >> b >> c → [(a,b), (b,c)]
+        for chain_match in _DEP_RSHIFT_CHAIN_RE.finditer(source):
+            parts = [p.strip() for p in chain_match.group(0).split(">>")]
+            for i in range(len(parts) - 1):
+                deps.append((parts[i], parts[i + 1]))
         for m in _DEP_LSHIFT_RE.finditer(source):
             deps.append((m.group(2), m.group(1)))
         for m in _SET_DOWNSTREAM_RE.finditer(source):

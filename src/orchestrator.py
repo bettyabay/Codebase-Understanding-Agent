@@ -12,7 +12,7 @@ from src.agents.archivist import Archivist
 from src.agents.hydrologist import Hydrologist
 from src.agents.semanticist import Semanticist
 from src.agents.surveyor import Surveyor
-from src.analyzers.repo_ingester import clone_if_remote
+from src.analyzers.repo_ingester import clone_if_remote, derive_repo_name
 from src.graph.knowledge_graph import KnowledgeGraph
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,14 @@ console = Console()
 class Orchestrator:
     """Wires all four agents in sequence and manages incremental updates."""
 
+    # Root directories — individual repo outputs live under <root>/<repo_name>/
+    CACHE_ROOT = Path("repo_cache")
+    CARTOGRAPHY_ROOT = Path(".cartography")
+
     def __init__(self, output_dir: Optional[Path] = None) -> None:
-        self.output_dir = output_dir or Path(".cartography")
+        # output_dir, if given explicitly, is the fully-resolved per-repo directory.
+        # If omitted, it is resolved later once the repo name is known.
+        self._explicit_output_dir = output_dir
         self.surveyor = Surveyor()
         self.hydrologist = Hydrologist()
         self.semanticist = Semanticist()
@@ -32,12 +38,16 @@ class Orchestrator:
     def analyze(
         self,
         repo_path: str,
+        repo_name: Optional[str] = None,
         skip_llm: bool = False,
         incremental: bool = False,
     ) -> KnowledgeGraph:
         """Run the full analysis pipeline: Surveyor -> Hydrologist -> Semanticist -> Archivist."""
+        name = repo_name or derive_repo_name(repo_path)
+        self.output_dir = self._explicit_output_dir or (self.CARTOGRAPHY_ROOT / name)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        resolved_path = clone_if_remote(repo_path, self.output_dir.parent / "repo_cache")
+        resolved_path = clone_if_remote(repo_path, self.CACHE_ROOT)
         repo_commit = self._get_current_commit(resolved_path)
 
         if incremental and (self.output_dir / "module_graph.json").exists():
@@ -79,6 +89,7 @@ class Orchestrator:
             self.archivist.build_semantic_index(kg, self.output_dir)
 
         console.print(f"\n[bold green]Analysis complete![/bold green] Output: [bold]{self.output_dir}[/bold]")
+        console.print(f"  Repo cache: [dim]repo_cache/{self.output_dir.name}[/dim]")
         _print_summary(kg)
         return kg
 

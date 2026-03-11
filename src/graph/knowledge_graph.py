@@ -116,11 +116,12 @@ class KnowledgeGraph:
     def save(self, output_dir: Path) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        module_data = json_graph.node_link_data(self.module_graph)
+        # Use "edges" for forward compatibility with NetworkX 3.6+ (load method handles both "edges" and "links")
+        module_data = json_graph.node_link_data(self.module_graph, edges="edges")
         with open(output_dir / "module_graph.json", "w", encoding="utf-8") as f:
             json.dump(module_data, f, indent=2, default=str)
 
-        lineage_data = json_graph.node_link_data(self.lineage_graph)
+        lineage_data = json_graph.node_link_data(self.lineage_graph, edges="edges")
         with open(output_dir / "lineage_graph.json", "w", encoding="utf-8") as f:
             json.dump(lineage_data, f, indent=2, default=str)
 
@@ -132,7 +133,9 @@ class KnowledgeGraph:
         if module_path.exists():
             with open(module_path, encoding="utf-8") as f:
                 data = json.load(f)
-            kg.module_graph = json_graph.node_link_graph(data)
+            # NetworkX 3.6+ changed default from "links" to "edges"; check which key exists
+            edges_key = "edges" if "edges" in data else "links"
+            kg.module_graph = json_graph.node_link_graph(data, edges=edges_key)
             for node_id, attrs in kg.module_graph.nodes(data=True):
                 try:
                     kg._modules[node_id] = ModuleNode(**{**attrs, "path": node_id})
@@ -143,7 +146,9 @@ class KnowledgeGraph:
         if lineage_path.exists():
             with open(lineage_path, encoding="utf-8") as f:
                 data = json.load(f)
-            kg.lineage_graph = json_graph.node_link_graph(data)
+            # NetworkX 3.6+ changed default from "links" to "edges"; check which key exists
+            edges_key = "edges" if "edges" in data else "links"
+            kg.lineage_graph = json_graph.node_link_graph(data, edges=edges_key)
             for node_id, attrs in kg.lineage_graph.nodes(data=True):
                 if attrs.get("node_type") == "dataset":
                     try:

@@ -1,0 +1,846 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "node_type": "dataset",
+      "name": "ecom__raw_customers",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "line_number": 0,
+      "id": "ecom__raw_customers"
+    },
+    {
+      "node_type": "dataset",
+      "name": "ecom__raw_orders",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "line_number": 0,
+      "id": "ecom__raw_orders"
+    },
+    {
+      "node_type": "dataset",
+      "name": "ecom__raw_items",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "line_number": 0,
+      "id": "ecom__raw_items"
+    },
+    {
+      "node_type": "dataset",
+      "name": "ecom__raw_stores",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "line_number": 0,
+      "id": "ecom__raw_stores"
+    },
+    {
+      "node_type": "dataset",
+      "name": "ecom__raw_products",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "line_number": 0,
+      "id": "ecom__raw_products"
+    },
+    {
+      "node_type": "dataset",
+      "name": "ecom__raw_supplies",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "line_number": 0,
+      "id": "ecom__raw_supplies"
+    },
+    {
+      "node_type": "dataset",
+      "name": "raw_customers",
+      "storage_type": "file",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_customers.csv",
+      "line_number": 0,
+      "id": "raw_customers"
+    },
+    {
+      "node_type": "dataset",
+      "name": "raw_items",
+      "storage_type": "file",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_items.csv",
+      "line_number": 0,
+      "id": "raw_items"
+    },
+    {
+      "node_type": "dataset",
+      "name": "raw_orders",
+      "storage_type": "file",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_orders.csv",
+      "line_number": 0,
+      "id": "raw_orders"
+    },
+    {
+      "node_type": "dataset",
+      "name": "raw_products",
+      "storage_type": "file",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_products.csv",
+      "line_number": 0,
+      "id": "raw_products"
+    },
+    {
+      "node_type": "dataset",
+      "name": "raw_stores",
+      "storage_type": "file",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_stores.csv",
+      "line_number": 0,
+      "id": "raw_stores"
+    },
+    {
+      "node_type": "dataset",
+      "name": "raw_supplies",
+      "storage_type": "file",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": true,
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_supplies.csv",
+      "line_number": 0,
+      "id": "raw_supplies"
+    },
+    {
+      "node_type": "dataset",
+      "name": "customers",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "line_number": 0,
+      "id": "customers"
+    },
+    {
+      "node_type": "dataset",
+      "name": "stg_customers",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "stg_customers"
+    },
+    {
+      "node_type": "dataset",
+      "name": "orders",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "orders"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::customers",
+      "source_datasets": [
+        "stg_customers",
+        "orders"
+      ],
+      "target_datasets": [
+        "customers"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "id": "sql::customers"
+    },
+    {
+      "node_type": "dataset",
+      "name": "locations",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "line_number": 0,
+      "id": "locations"
+    },
+    {
+      "node_type": "dataset",
+      "name": "stg_locations",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "stg_locations"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::locations",
+      "source_datasets": [
+        "stg_locations"
+      ],
+      "target_datasets": [
+        "locations"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "id": "sql::locations"
+    },
+    {
+      "node_type": "dataset",
+      "name": "metricflow_time_spine",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "line_number": 0,
+      "id": "metricflow_time_spine"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::metricflow_time_spine",
+      "source_datasets": [],
+      "target_datasets": [
+        "metricflow_time_spine"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "id": "sql::metricflow_time_spine"
+    },
+    {
+      "node_type": "dataset",
+      "name": "stg_orders",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "stg_orders"
+    },
+    {
+      "node_type": "dataset",
+      "name": "order_items",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "order_items"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::orders",
+      "source_datasets": [
+        "stg_orders",
+        "order_items"
+      ],
+      "target_datasets": [
+        "orders"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "id": "sql::orders"
+    },
+    {
+      "node_type": "dataset",
+      "name": "stg_order_items",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "stg_order_items"
+    },
+    {
+      "node_type": "dataset",
+      "name": "stg_products",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "stg_products"
+    },
+    {
+      "node_type": "dataset",
+      "name": "stg_supplies",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_number": 0,
+      "id": "stg_supplies"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::order_items",
+      "source_datasets": [
+        "stg_order_items",
+        "stg_orders",
+        "stg_products",
+        "stg_supplies"
+      ],
+      "target_datasets": [
+        "order_items"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "id": "sql::order_items"
+    },
+    {
+      "node_type": "dataset",
+      "name": "products",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "line_number": 0,
+      "id": "products"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::products",
+      "source_datasets": [
+        "stg_products"
+      ],
+      "target_datasets": [
+        "products"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "id": "sql::products"
+    },
+    {
+      "node_type": "dataset",
+      "name": "supplies",
+      "storage_type": "table",
+      "schema_snapshot": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "line_number": 0,
+      "id": "supplies"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::supplies",
+      "source_datasets": [
+        "stg_supplies"
+      ],
+      "target_datasets": [
+        "supplies"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "id": "sql::supplies"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::stg_customers",
+      "source_datasets": [
+        "ecom__raw_customers"
+      ],
+      "target_datasets": [
+        "stg_customers"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "id": "sql::stg_customers"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::stg_locations",
+      "source_datasets": [
+        "ecom__raw_stores"
+      ],
+      "target_datasets": [
+        "stg_locations"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "id": "sql::stg_locations"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::stg_orders",
+      "source_datasets": [
+        "ecom__raw_orders"
+      ],
+      "target_datasets": [
+        "stg_orders"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "id": "sql::stg_orders"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::stg_order_items",
+      "source_datasets": [
+        "ecom__raw_items"
+      ],
+      "target_datasets": [
+        "stg_order_items"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "id": "sql::stg_order_items"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::stg_products",
+      "source_datasets": [
+        "ecom__raw_products"
+      ],
+      "target_datasets": [
+        "stg_products"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "id": "sql::stg_products"
+    },
+    {
+      "node_type": "transformation",
+      "name": "sql::stg_supplies",
+      "source_datasets": [
+        "ecom__raw_supplies"
+      ],
+      "target_datasets": [
+        "stg_supplies"
+      ],
+      "transformation_type": "sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "id": "sql::stg_supplies"
+    }
+  ],
+  "edges": [
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "ecom__raw_customers",
+      "target": "sql::stg_customers"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "ecom__raw_orders",
+      "target": "sql::stg_orders"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "ecom__raw_items",
+      "target": "sql::stg_order_items"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "ecom__raw_stores",
+      "target": "sql::stg_locations"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "ecom__raw_products",
+      "target": "sql::stg_products"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "ecom__raw_supplies",
+      "target": "sql::stg_supplies"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_customers",
+      "target": "sql::customers"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "orders",
+      "target": "sql::customers"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::customers",
+      "target": "customers"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_locations",
+      "target": "sql::locations"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::locations",
+      "target": "locations"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::metricflow_time_spine",
+      "target": "metricflow_time_spine"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_orders",
+      "target": "sql::orders"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_orders",
+      "target": "sql::order_items"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "order_items",
+      "target": "sql::orders"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::orders",
+      "target": "orders"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_order_items",
+      "target": "sql::order_items"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_products",
+      "target": "sql::order_items"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_products",
+      "target": "sql::products"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_supplies",
+      "target": "sql::order_items"
+    },
+    {
+      "edge_type": "CONSUMES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "stg_supplies",
+      "target": "sql::supplies"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::order_items",
+      "target": "order_items"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::products",
+      "target": "products"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::supplies",
+      "target": "supplies"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::stg_customers",
+      "target": "stg_customers"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::stg_locations",
+      "target": "stg_locations"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::stg_orders",
+      "target": "stg_orders"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::stg_order_items",
+      "target": "stg_order_items"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::stg_products",
+      "target": "stg_products"
+    },
+    {
+      "edge_type": "PRODUCES",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "line_range": [
+        0,
+        0
+      ],
+      "source": "sql::stg_supplies",
+      "target": "stg_supplies"
+    }
+  ]
+}

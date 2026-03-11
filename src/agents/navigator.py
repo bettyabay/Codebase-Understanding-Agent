@@ -115,18 +115,11 @@ def explain_module(module_path: str, kg: KnowledgeGraph, repo_path: Optional[Pat
 
     source_code = ""
     if repo_path:
-        candidates = [
-            repo_path / (module_path.replace("/", os.sep) + ".py"),
-            repo_path / module_path,
-            Path(module_path),
-        ]
-        for c in candidates:
-            if c.exists():
-                try:
-                    source_code = c.read_text(encoding="utf-8", errors="replace")[:8000]
-                except OSError:
-                    pass
-                break
+        # Reuse Semanticist's robust source resolver so we handle .py, .sql, .yaml, etc.
+        try:
+            source_code = _semanticist._read_source(repo_path, module_path)[:8000]
+        except Exception:
+            source_code = ""
 
     if source_code:
         prompt = (
@@ -196,13 +189,13 @@ def build_navigator_graph(kg: KnowledgeGraph, repo_path: Optional[Path] = None, 
         return None
 
 
-_NAVIGATOR_MODEL = "gemini-2.5-flash"
+_NAVIGATOR_MODEL = "gemini-1.5-flash"
 # Respects GROQ_MODEL env var; also accepts the common GROK_API_KEY typo
 _GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 
 def _get_llm_for_navigator():
-    """Build the Navigator LLM with automatic fallbacks: Gemini → Groq → OpenAI.
+    """Build the Navigator LLM with automatic fallbacks: Gemini → Groq.
 
     Uses LangChain's .with_fallbacks() so rate-limit errors on Gemini transparently
     retry the next provider without restarting the agent.
@@ -226,14 +219,6 @@ def _get_llm_for_navigator():
         try:
             from langchain_groq import ChatGroq
             candidates.append(ChatGroq(model=_GROQ_MODEL, api_key=groq_key, temperature=0))
-        except ImportError:
-            pass
-
-    # 3. OpenAI (last resort)
-    if os.getenv("OPENAI_API_KEY"):
-        try:
-            from langchain_openai import ChatOpenAI
-            candidates.append(ChatOpenAI(model="gpt-4o-mini", temperature=0))
         except ImportError:
             pass
 

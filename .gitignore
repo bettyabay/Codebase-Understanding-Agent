@@ -17,7 +17,7 @@ venv/
 .coverage
 
 # Generated analysis output — not committed
-.cartography/
+
 repo_cache/
 
 # Streamlit

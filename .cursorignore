@@ -1,0 +1,18 @@
+# Prevent index bloat (and token waste)
+node_modules/
+.git/
+dist/
+build/
+out/
+.env
+
+# Exclude large, irrelevant files
+*.log
+*.lock
+package-lock.json
+yarn.lock
+
+# Exclude large data files
+/data/
+/fixtures/*.json
+/legacy/

@@ -463,7 +463,22 @@ def page_git_heatmap(kg, cartography_dir: Path) -> None:
     if files and weeks and matrix:
         col1, col2 = st.columns([3, 1])
         with col2:
-            top_n = st.slider("Files shown", min_value=5, max_value=min(30, len(files)), value=min(20, len(files)))
+            max_files = min(30, len(files))
+            # For small repos (e.g. 1–4 files), avoid invalid slider ranges like min=5, max=2.
+            min_files = 1 if max_files < 5 else 5
+            default = min(20, max_files)
+
+            if max_files <= min_files:
+                # Not enough files to warrant a slider; just show all of them.
+                top_n = max_files
+            else:
+                top_n = st.slider(
+                    "Files shown",
+                    min_value=min_files,
+                    max_value=max_files,
+                    value=default,
+                )
+
         files = files[:top_n]
         matrix = matrix[:top_n]
 
@@ -554,7 +569,11 @@ def page_navigator_chat(kg, cartography_dir: Path) -> None:
         with st.chat_message("assistant"):
             with st.spinner("Querying knowledge graph…"):
                 from src.agents.navigator import Navigator
-                nav = Navigator(kg, cartography_dir=cartography_dir)
+                # Best-effort guess: repo was cloned into repo_cache/<name>
+                from pathlib import Path as _Path
+                repo_guess = _Path("repo_cache") / cartography_dir.name
+                repo_path = repo_guess if repo_guess.exists() else None
+                nav = Navigator(kg, repo_path=repo_path, cartography_dir=cartography_dir)
                 response = nav.query(prompt)
 
             # Render tool usage as an expander

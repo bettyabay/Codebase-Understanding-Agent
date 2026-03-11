@@ -48,8 +48,9 @@ FIVE_QUESTIONS = [
 class ContextWindowBudget:
     """Tracks token usage and routes LLM calls to appropriate models."""
 
-    # gemini-2.5-flash free tier = $0 on Google AI Studio
-    COST_PER_1K = {"gemini-flash": 0.0, "gpt-4o-mini": 0.00015, "gpt-4o": 0.005}
+    # gemini-1.5-flash free tier = $0 on Google AI Studio
+    # We no longer use OpenAI/GPT models in this project.
+    COST_PER_1K = {"gemini-flash": 0.0}
 
     def __init__(self, budget_usd: float = 2.0) -> None:
         self.budget_usd = budget_usd
@@ -65,9 +66,8 @@ class ContextWindowBudget:
         self.spent_usd += (tokens / 1000) * rate
 
     def select_model(self, token_count: int, synthesis: bool = False) -> str:
-        if synthesis:
-            return "gpt-4o-mini"
-        return "gemini-flash" if token_count < 8000 else "gpt-4o-mini"
+        # Single-provider setup: always route budgeting through the Gemini bucket.
+        return "gemini-flash"
 
     def budget_remaining(self) -> float:
         return self.budget_usd - self.spent_usd
@@ -294,7 +294,7 @@ class Semanticist:
         if self._llm_client is not None:
             return self._llm_client
 
-        # Priority: Gemini (free tier) > Groq > OpenAI
+        # Priority: Gemini (free tier) > Groq
         # Uses the new google-genai SDK (from google import genai), not the old google-generativeai.
         if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
             try:
@@ -314,15 +314,6 @@ class Semanticist:
                 from groq import Groq
                 self._llm_client = Groq(api_key=groq_key)
                 self._llm_provider = "groq"
-                return self._llm_client
-            except ImportError:
-                pass
-
-        if os.getenv("OPENAI_API_KEY"):
-            try:
-                from openai import OpenAI
-                self._llm_client = OpenAI()
-                self._llm_provider = "openai"
                 return self._llm_client
             except ImportError:
                 pass
@@ -364,7 +355,7 @@ class Semanticist:
                 if self._llm_provider == "gemini":
                     # New google-genai SDK: client is a genai.Client instance
                     response = client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model="gemini-1.5-flash",
                         contents=prompt,
                     )
                     return response.text or ""
@@ -373,17 +364,6 @@ class Semanticist:
                     groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
                     response = client.chat.completions.create(
                         model=groq_model,
-                        messages=[{"role": "user", "content": prompt}],
-                        max_tokens=1024,
-                        temperature=0.2,
-                    )
-                    return response.choices[0].message.content or ""
-
-                else:
-                    # OpenAI
-                    actual_model = "gpt-4o-mini" if model == "gemini-flash" else model
-                    response = client.chat.completions.create(
-                        model=actual_model,
                         messages=[{"role": "user", "content": prompt}],
                         max_tokens=1024,
                         temperature=0.2,

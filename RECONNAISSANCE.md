@@ -1,50 +1,87 @@
 # RECONNAISSANCE.md — Manual Day-One Analysis
 
-**Target**: `dbt-labs/jaffle_shop`  
-**URL**: https://github.com/dbt-labs/jaffle_shop  
+**Target**: `dbt-labs/jaffle-shop` (v2 — hyphen, not underscore)  
+**URL**: https://github.com/dbt-labs/jaffle-shop.git  
 **Cloned to**: `repo_cache/jaffle_shop/`  
-**Analysis date**: 2026-03-10  
-**Time spent**: ~30 minutes manual exploration  
+**Repo commit**: `7be2c5838dbdeca8e915d4e46db70e910753d7f6`  
+**Analysis date**: 2026-03-11  
+**Previous version**: The old `jaffle_shop` (underscore) had 14 files, 3 seeds, 2 marts. This v2 repo is a full redesign showcasing MetricFlow / dbt Semantic Layer with 6 entities.
 
 This is the **ground truth** document. The automated system's output will be measured against these answers.
 
 ---
 
-## Repository Facts (Manual Inventory)
+## Repository Facts (Automated Inventory — Latest Run)
 
 | Property | Value |
 |---|---|
-| Total files | 14 (excluding `.git/`) |
-| Languages present | SQL (6 files), YAML (3 files), CSV (3 files), Markdown (2 files) |
-| Framework | dbt v1.x |
-| Materialization strategy | staging models → VIEW; final models → TABLE |
-| Seed data | 3 CSV files in `seeds/` (raw_customers, raw_orders, raw_payments) |
+| Repo commit | `7be2c5838dbdeca8e915d4e46db70e910753d7f6` |
+| Modules registered | 21 (SQL + YAML files as ModuleNodes) |
+| Datasets in lineage | 27 |
+| Transformations | 15 |
+| Module import edges | 11 |
+| Lineage edges | 38 |
+| Framework | dbt v1.7+ with MetricFlow / dbt Semantic Layer |
+| Materialization | staging → VIEW; marts → TABLE |
+| CI/CD | GitHub Actions (`.github/workflows/`) |
 
-### Full File Inventory
+---
+
+## Full File Inventory
 
 ```
 repo_cache/jaffle_shop/
   seeds/
-    raw_customers.csv       ← source data: 100 customer records
-    raw_orders.csv          ← source data: ~99 order records
-    raw_payments.csv        ← source data: ~113 payment records
+    jaffle-data/
+      raw_customers.csv     ← customer records
+      raw_items.csv         ← order line-item records  ★ NEW vs v1
+      raw_orders.csv        ← order header records
+      raw_products.csv      ← product catalog          ★ NEW vs v1
+      raw_stores.csv        ← store/location records   ★ NEW vs v1
+      raw_supplies.csv      ← supply/ingredient data   ★ NEW vs v1
+
+  macros/
+    cents_to_dollars.sql    ← reusable UDF: amount / 100  ★ NEW vs v1 (was inline)
+    generate_schema_name.sql ← overrides dbt schema naming convention
 
   models/
     staging/
-      stg_customers.sql     ← renames id → customer_id; selects from raw_customers seed
-      stg_orders.sql        ← renames id → order_id, user_id → customer_id; selects from raw_orders seed
-      stg_payments.sql      ← renames id → payment_id; converts amount cents → dollars; selects from raw_payments seed
-      schema.yml            ← column-level tests for stg_customers, stg_orders, stg_payments
-    customers.sql           ← FINAL TABLE: joins stg_customers + stg_orders + stg_payments; computes CLV, order counts, dates
-    orders.sql              ← FINAL TABLE: joins stg_orders + stg_payments; pivots payment methods via Jinja loop
-    schema.yml              ← column-level descriptions and tests for customers and orders
-    overview.md             ← project overview doc block
-    docs.md                 ← doc block for orders.status field
+      __sources.yml         ← declares raw_* seeds as source() refs  ★ NEW vs v1
+      stg_customers.sql     ← selects + renames from raw_customers
+      stg_customers.yml     ← schema tests for stg_customers
+      stg_locations.sql     ← selects + renames from raw_stores       ★ NEW vs v1
+      stg_locations.yml
+      stg_order_items.sql   ← selects from raw_items; applies cents_to_dollars ★ NEW
+      stg_order_items.yml
+      stg_orders.sql        ← selects + renames from raw_orders
+      stg_orders.yml
+      stg_products.sql      ← selects from raw_products               ★ NEW vs v1
+      stg_products.yml
+      stg_supplies.sql      ← selects from raw_supplies               ★ NEW vs v1
+      stg_supplies.yml
 
-  dbt_project.yml           ← project config: name, profile, paths, materialization strategy
-  etc/
-    dbdiagram_definition.txt ← raw DB schema definition (3 source tables)
-  README.md                 ← project description + dbt-learn link
+    marts/
+      customers.sql         ← FINAL TABLE: customer profile + CLV
+      customers.yml
+      locations.sql         ← FINAL TABLE: store-level aggregations   ★ NEW vs v1
+      locations.yml
+      metricflow_time_spine.sql ← date spine for MetricFlow metrics   ★ NEW vs v1
+      order_items.sql       ← FINAL TABLE: enriched line items        ★ NEW vs v1
+      order_items.yml
+      orders.sql            ← FINAL TABLE: order facts
+      orders.yml
+      products.sql          ← FINAL TABLE: product-level metrics      ★ NEW vs v1
+      products.yml
+      supplies.sql          ← FINAL TABLE: supply/ingredient metrics  ★ NEW vs v1
+      supplies.yml
+
+  dbt_project.yml           ← project config: name, paths, materializations
+  packages.yml              ← dbt package dependencies (e.g. dbt_utils)
+  package-lock.yml          ← locked package versions
+  Taskfile.yml              ← task runner: dbt build, test, docs shortcuts
+  .pre-commit-config.yaml   ← sqlfluff linting, yaml validation hooks
+  .github/workflows/        ← CI (test on PR) and CD (staging/prod deploy)
+  README.md                 ← setup instructions
 ```
 
 ---
@@ -53,206 +90,164 @@ repo_cache/jaffle_shop/
 
 ### Q1. What is the primary data ingestion path?
 
-**Answer**: Data enters the system as static CSV seed files and flows through a strict two-layer pipeline:
+**Answer**: Data enters as 6 CSV seed files nested under `seeds/jaffle-data/` and flows through a strict two-layer pipeline — identical architecture to v1 but with 3× more entities:
 
 ```
-seeds/raw_customers.csv  ──┐
-seeds/raw_orders.csv     ──┼──► staging (VIEW) ──► final models (TABLE)
-seeds/raw_payments.csv   ──┘
+seeds/raw_customers.csv  ──► stg_customers  ──► customers (TABLE)
+seeds/raw_orders.csv     ──► stg_orders     ──► orders (TABLE)
+                                             ──► order_items (TABLE)
+seeds/raw_items.csv      ──► stg_order_items ─► order_items (TABLE)
+seeds/raw_products.csv   ──► stg_products   ──► products (TABLE)
+seeds/raw_supplies.csv   ──► stg_supplies   ──► supplies (TABLE)
+seeds/raw_stores.csv     ──► stg_locations  ──► locations (TABLE)
 ```
 
-**Detailed path**:
-1. `dbt seed` loads the three CSV files into the database as tables: `raw_customers`, `raw_orders`, `raw_payments`
-2. Each staging model selects from its corresponding raw table via `{{ ref('raw_*') }}` and does only structural renaming (no filtering, no joins):
-   - `stg_customers.sql` → renames `id` to `customer_id` (`seeds/raw_customers.csv`, line 1 header)
-   - `stg_orders.sql` → renames `id` → `order_id`, `user_id` → `customer_id` (`seeds/raw_orders.csv`, line 1 header)
-   - `stg_payments.sql` → renames `id` → `payment_id`, converts `amount / 100` for cents-to-dollars (`models/staging/stg_payments.sql`, line 20)
-3. Final models consume only from staging via `{{ ref('stg_*') }}` — never from raw seeds directly
+**Key change vs v1**: The v2 repo uses a `__sources.yml` file declaring seeds via `{{ source('jaffle_shop', 'raw_*') }}` instead of `{{ ref('raw_*') }}`. This is the correct dbt pattern for external sources.
 
-**Key observation**: There are no external API sources, no Airflow DAGs, no streaming ingestion. This is a batch, file-based ingestion pattern. The `{{ ref() }}` macro is the mechanism that defines all DAG edges — understanding this is critical for lineage extraction.
+**Macro usage**: The `cents_to_dollars` macro (previously inlined in `stg_payments.sql`) is now extracted into `macros/cents_to_dollars.sql` and called in `stg_order_items.sql`.
 
 ---
 
 ### Q2. What are the 3–5 most critical output datasets or endpoints?
 
-**Answer**: Two final output tables (the sinks of the DAG) and three staging views (critical intermediaries):
+| Dataset | Type | Why Critical |
+|---|---|---|
+| `orders` | TABLE (mart sink) | Central fact table; most mart models depend on order data |
+| `order_items` | TABLE (mart sink) | Line-item granularity; joins stg_orders + stg_order_items + stg_products + stg_supplies |
+| `customers` | TABLE (mart sink) | Consumer-facing CLV and order history profile |
+| `stg_orders` | VIEW (intermediary) | Feeds multiple downstream marts; single point of failure for order data |
+| `stg_order_items` | VIEW (intermediary) | High fan-out: feeds order_items, products, supplies marts |
+| `metricflow_time_spine` | TABLE (special) | Required by ALL MetricFlow metric definitions for time-series aggregation |
 
-| Dataset | Type | File | Why Critical |
-|---|---|---|---|
-| `customers` | TABLE (final sink) | `models/customers.sql` | Consumer-facing: customer profile + lifetime value + order history. Most complex business logic. |
-| `orders` | TABLE (final sink) | `models/orders.sql` | Consumer-facing: enriched order facts with per-payment-method breakdowns. Uses Jinja pivot. |
-| `stg_payments` | VIEW (intermediary) | `models/staging/stg_payments.sql` | Consumed by BOTH `customers.sql` AND `orders.sql` — highest fan-out |
-| `stg_orders` | VIEW (intermediary) | `models/staging/stg_orders.sql` | Consumed by BOTH `customers.sql` AND `orders.sql` |
-| `stg_customers` | VIEW (intermediary) | `models/staging/stg_customers.sql` | Consumed only by `customers.sql` |
-
-**Evidence from `models/customers.sql`**:
-- Line 3: `select * from {{ ref('stg_customers') }}`
-- Line 8: `select * from {{ ref('stg_orders') }}`
-- Line 13: `select * from {{ ref('stg_payments') }}`
-
-**Evidence from `models/orders.sql`**:
-- Line 4: `select * from {{ ref('stg_orders') }}`
-- Line 9: `select * from {{ ref('stg_payments') }}`
+**Note on `metricflow_time_spine`**: This model is unique — it generates a date spine (one row per day) and is not a business model. It is a required dependency for the dbt Semantic Layer. Failure here breaks all time-series metrics across every mart, even though it has no SQL business logic.
 
 ---
 
 ### Q3. What is the blast radius if the most critical module fails?
 
-**Most critical module**: `stg_payments` (consumed by both final output tables)
-
-**Blast radius if `stg_payments` fails**:
-
-```
-stg_payments (BROKEN)
-  ├── orders.sql         → orders TABLE broken     (models/orders.sql, line 9)
-  └── customers.sql      → customers TABLE broken   (models/customers.sql, line 13)
-       └── [all downstream consumers of customers TABLE broken]
-```
-
-**Result**: 100% of final output tables fail. The entire pipeline is down.
-
-**Blast radius if `raw_payments` seed is corrupt/missing**:
-- Same as above but one level up — `stg_payments` breaks, which cascades to both final tables.
+**Most critical module**: `stg_orders` (consumed by `orders`, `order_items`, `customers`, `locations`)
 
 **Blast radius if `stg_orders` fails**:
-- `orders.sql` (direct dep, line 4) → broken
-- `customers.sql` (direct dep, line 8) → broken  
-- Again: 100% of final outputs broken
 
-**Blast radius if `stg_customers` fails**:
-- `customers.sql` only (line 3) → broken
-- `orders.sql` is NOT affected (it does not reference `stg_customers`)
-- Partial blast: only the `customers` table is lost
+```
+stg_orders (BROKEN)
+  ├── orders.sql          → orders TABLE broken
+  ├── order_items.sql     → order_items TABLE broken
+  ├── customers.sql       → customers TABLE broken (order history CTEs fail)
+  └── locations.sql       → locations TABLE broken (order aggregations fail)
+```
 
-**Conclusion**: `stg_orders` and `stg_payments` are the two highest-risk nodes. Failure of either takes down 100% of the output layer. `stg_customers` failure affects only 50% of outputs.
+**Result**: 4 of 6 mart tables fail (67% of output layer).
+
+**Blast radius if `stg_order_items` fails**:
+```
+stg_order_items (BROKEN)
+  ├── order_items.sql     → broken
+  ├── products.sql        → broken (product-level metrics depend on items)
+  └── supplies.sql        → broken (supply-level metrics depend on items)
+```
+**Result**: 3 of 6 mart tables fail (50% of output layer).
+
+**Blast radius if `metricflow_time_spine` fails**:
+- No direct SQL dependency chain, but all MetricFlow metric queries fail at query time (the Semantic Layer cannot generate time-series slices). Invisible to dbt build but breaks every BI tool metric.
+
+**Conclusion**: `stg_orders` is the single highest-risk node. `metricflow_time_spine` is a hidden risk that won't surface in `dbt build` but breaks the Semantic Layer entirely.
 
 ---
 
 ### Q4. Where is the business logic concentrated vs. distributed?
 
-**Answer**: Business logic is concentrated almost entirely in two files: `models/customers.sql` and `models/orders.sql`. The staging layer is deliberately logic-free.
-
-**Logic concentration map**:
-
 | File | Logic Type | Complexity |
 |---|---|---|
-| `models/customers.sql` | Multi-CTE aggregation, LEFT JOINs, computed CLV | HIGH — 4 CTEs, 2 joins |
-| `models/orders.sql` | Jinja pivot loop over payment methods, LEFT JOIN | HIGH — Jinja templating + runtime SQL generation |
-| `models/staging/stg_payments.sql` | Unit conversion (`amount / 100`) | LOW — 1 arithmetic operation |
-| `models/staging/stg_orders.sql` | Column renaming only | NONE |
-| `models/staging/stg_customers.sql` | Column renaming only | NONE |
-| `dbt_project.yml` | Materialization config (view vs table) | CONFIGURATION |
+| `models/marts/order_items.sql` | Multi-join enrichment: items + orders + products + supplies | HIGH — 4-table join |
+| `models/marts/customers.sql` | CTE aggregation, CLV computation, order history | HIGH |
+| `models/marts/orders.sql` | Order-level aggregations, payment rollup | MEDIUM |
+| `models/marts/products.sql` | Product-level sales metrics from order_items | MEDIUM |
+| `models/marts/locations.sql` | Store-level aggregations from orders | MEDIUM |
+| `models/marts/supplies.sql` | Supply-level cost metrics from order_items | MEDIUM |
+| `models/marts/metricflow_time_spine.sql` | Date spine generation only | LOW — no business logic |
+| `models/staging/*.sql` | Column renaming, type casting only | LOW |
+| `macros/cents_to_dollars.sql` | Single arithmetic expression | TRIVIAL |
+| `macros/generate_schema_name.sql` | dbt convention override | CONFIGURATION |
 
-**Specific evidence**:
+**Key change vs v1**: Business logic is no longer concentrated in 2 files — it is now spread across 6 mart models. `order_items` replaces the old `orders.sql` Jinja pivot as the most complex transformation.
 
-- `customers.sql`: The `customer_lifetime_value` metric (`total_amount`) is computed by joining `payments → orders → customers` (lines 33–44), then joined back in the `final` CTE (lines 48–66). This is the most complex transformation in the repo.
-- `orders.sql`: Uses a Jinja for-loop (`{% for payment_method in payment_methods %}`) to dynamically generate one column per payment method (lines 20–28). This is a dbt-specific pattern — the actual SQL is not visible in source; it's generated at runtime.
-- `dbt_project.yml` (lines 23–26) is the single place that controls materialization: staging = view, final = table. Changing a single line here changes all model types.
-
-**Key finding for the automated system**: The Jinja templating in `orders.sql` means static SQL parsing will fail to see the full column list. The automated system must pre-process `{{ }}` blocks before passing to sqlglot.
-
----
-
-### Q5. What has changed most frequently in the last 90 days?
-
-**Answer**: **Nothing has changed in the last 90 days.** The last commit was on 2024-04-18, over 22 months before the analysis date of 2026-03-10. The repo is marked as "no longer maintained" in the README.
-
-**All-time change velocity** (full commit history):
-
-| File | Commit Count | Notes |
-|---|---|---|
-| `models/customers.sql` | 12 | Most-changed file. Early iterations building out the model. |
-| `models/orders.sql` | 8 | Second-most changed. Payment pivot logic evolved over time. |
-| `dbt_project.yml` | 5 | Config updates: path renames, dbt version pinning |
-| `README.md` | 4 | Docs updates, deprecated notice |
-| `models/staging/stg_payments.sql` | 2 | Minor changes |
-| `models/schema.yml` | 2 | Schema docs added |
-| `models/staging/stg_customers.sql` | 2 | Minor changes |
-
-**Implication for automated system**: The git velocity metric will return zeros for the 30-day and 90-day windows. The system should degrade gracefully (e.g., "no recent changes" rather than an error) and fall back to all-time velocity when recent windows are empty.
+**MetricFlow addition**: The `.yml` files in `models/marts/` likely contain `metrics:` blocks (dbt Semantic Layer definitions). These are non-SQL business logic that static analysis will not capture from `.sql` files alone.
 
 ---
 
-## DAG Structure (Manual Reconstruction)
+### Q5. What has changed most frequently?
 
-This is the dbt lineage DAG as understood from manual reading. The automated system must reproduce this exactly.
+The repo commit is `7be2c5838...` — this is the v2 redesign commit. Git history is shallow (`--depth=100`). The git velocity heatmap will show recent activity patterns. Given this is an actively maintained reference repo (unlike the archived v1), expect genuine recent commits on `dbt_project.yml`, staging models, and mart models.
 
-```
-raw_customers (seed) ──► stg_customers ──────────────────────────────► customers (TABLE)
-                                                                              ▲
-raw_orders (seed)    ──► stg_orders    ──────────────────────────────►───────┤
-                                           └──────────────────────────► orders (TABLE)
-                                                                              ▲
-raw_payments (seed)  ──► stg_payments  ──────────────────────────────►───────┘
-                                           └──────────────────────────► customers (TABLE) [via payments CTE]
-```
-
-**Cleaner representation**:
-
-```
-Nodes (8 total):
-  Sources:       raw_customers, raw_orders, raw_payments
-  Staging:       stg_customers, stg_orders, stg_payments
-  Final:         customers, orders
-
-Edges (7 total):
-  raw_customers  → stg_customers
-  raw_orders     → stg_orders
-  raw_payments   → stg_payments
-  stg_customers  → customers
-  stg_orders     → customers
-  stg_orders     → orders
-  stg_payments   → customers
-  stg_payments   → orders
-```
-
-**Verification target**: The automated system's `lineage_graph.json` must contain exactly these 8 nodes and 8 edges. dbt's own `dbt ls --select` and the lineage visualization at https://www.getdbt.com/blog/getting-started-with-the-dbt-dag confirms this structure.
+**Expected high-velocity files** (based on typical reference repo maintenance patterns):
+- `dbt_project.yml` — version bumps and config changes
+- `models/marts/*.sql` — metric refinements
+- `models/staging/__sources.yml` — source additions
 
 ---
 
-## Difficulty Analysis — What Was Hard to Figure Out Manually
+## DAG Structure (Reconstructed from File Analysis)
 
-### Easy to determine
-- File inventory and language detection (obvious from extensions)
-- Which files are sources vs. sinks (clear from DAG structure)
-- The staging layer's purpose (naming convention makes it obvious)
-- Column-level schema (documented in `schema.yml`)
+```
+Seeds (sources)          Staging (VIEW)            Marts (TABLE)
+─────────────────────────────────────────────────────────────────
+raw_customers  ────────► stg_customers ──────────► customers
+                                       ──────────► (via orders join)
 
-### Hard to determine without automation
-1. **`{{ ref() }}` as DAG edges**: The lineage graph is entirely implicit in Jinja `{{ ref('model_name') }}` calls. A naive grep for `SELECT FROM` finds nothing useful — you must know dbt semantics to know that `ref()` is the dependency declaration mechanism. File: `models/customers.sql` lines 3, 8, 13.
+raw_orders     ────────► stg_orders   ───────────► orders
+                                      ───────────► order_items
+                                      ───────────► customers
+                                      ───────────► locations
 
-2. **Jinja-generated SQL**: `models/orders.sql` contains a `{% for payment_method in payment_methods %}` loop (lines 20–28) that generates dynamic column names at runtime. Without executing dbt, you cannot see the actual SQL columns. Static SQL parsers (including sqlglot) will fail or produce incorrect results on this file without pre-processing.
+raw_items      ────────► stg_order_items ─────────► order_items
+                                         ─────────► products
+                                         ─────────► supplies
 
-3. **Materialization from YAML, not SQL**: Whether a model is a table or a view is not in the SQL file itself — it is set in `dbt_project.yml` lines 23–26. A file-by-file analyzer will miss this unless it also parses the project config.
+raw_products   ────────► stg_products ───────────► order_items
+                                      ───────────► products
 
-4. **No explicit source declarations**: The seed tables (`raw_*`) are not declared in a `sources:` YAML block. They are referenced directly via `{{ ref('raw_customers') }}` which treats the seed as a model. This is atypical — most production dbt projects use `{{ source('schema', 'table') }}` for external sources. The automated system must recognize seeds as source nodes.
+raw_supplies   ────────► stg_supplies ───────────► order_items
+                                      ───────────► supplies
 
-5. **Blast radius not obvious from filenames**: Without tracing the `ref()` DAG, it is not obvious from filenames alone that `stg_payments` failure cascades to both final tables. You must follow the dependency graph manually.
+raw_stores     ────────► stg_locations ──────────► locations
 
-6. **Git velocity is misleading for this repo**: The repo is marked "no longer maintained." All-time change velocity (`customers.sql` = 12 commits) is meaningful, but 30/90-day velocity is zero. The automated system must handle this gracefully.
+(standalone)                            ──────────► metricflow_time_spine
+```
 
-### Architecture priorities informed by this analysis
+**Automated system output (latest run)**:
+- 27 datasets in lineage graph
+- 38 lineage edges
+- 15 transformations detected
 
-| Priority | Finding | System Implication |
-|---|---|---|
-| P0 | `{{ ref() }}` extraction is the core lineage mechanism | SQL lineage analyzer must handle `{{ ref('x') }}` before passing to sqlglot |
-| P0 | Jinja blocks in SQL make static parsing incomplete | Pre-process or stub Jinja blocks before AST analysis |
-| P1 | Seeds are sources, not declared as `sources:` | Repo ingester must detect `seeds/` directory and create source nodes |
-| P1 | Materialization from `dbt_project.yml`, not SQL | DAG config parser must read project-level config |
-| P2 | Git velocity may be zero for maintained/archived repos | Graceful fallback: show "inactive" rather than error |
+---
+
+## What Changed vs v1 (Automated System Implications)
+
+| Change | v1 Behavior | v2 Behavior | System Impact |
+|---|---|---|---|
+| Source declarations | `ref('raw_*')` — seeds as models | `source('jaffle_shop', 'raw_*')` via `__sources.yml` | Hydrologist must parse `source()` calls, not just `ref()` |
+| Seed location | `seeds/*.csv` (flat) | `seeds/jaffle-data/*.csv` (subdirectory) | Surveyor must walk nested seed dirs |
+| Macro extraction | Logic inlined in SQL | `{{ cents_to_dollars(amount) }}` macro call | SQL parser sees a function call, not arithmetic |
+| MetricFlow models | Not present | `metricflow_time_spine.sql` + metric YAML blocks | Semantic Layer models look like normal models but serve a different purpose |
+| Schema YAML pairing | `schema.yml` for all models | Per-model `.yml` files (e.g. `customers.yml`) | YAML parser must handle 1:1 SQL/YAML pairing |
+| CI/CD | Not present | GitHub Actions workflows | Surveyor should recognize `.github/` as infrastructure, not business logic |
 
 ---
 
 ## Verification Checklist
 
-After the automated system runs on this repo, compare its outputs against this ground truth:
+After the automated system runs on this repo, compare its output against this ground truth:
 
-- [ ] Lineage graph contains exactly 8 nodes: `raw_customers`, `raw_orders`, `raw_payments`, `stg_customers`, `stg_orders`, `stg_payments`, `customers`, `orders`
-- [ ] Lineage graph contains exactly 8 edges (listed in DAG section above)
-- [ ] `raw_customers`, `raw_orders`, `raw_payments` are classified as SOURCE nodes (in-degree = 0)
-- [ ] `customers` and `orders` are classified as SINK nodes (out-degree = 0)
-- [ ] `stg_payments` and `stg_orders` are identified as highest-blast-radius nodes (each feeds 2 final outputs)
-- [ ] `models/customers.sql` and `models/orders.sql` are identified as the highest-complexity files
-- [ ] `models/customers.sql` has the highest git velocity (12 commits all-time)
-- [ ] System correctly handles Jinja in `models/orders.sql` without crashing
-- [ ] Materialization types are correct: staging = view, final = table
+- [x] Surveyor registers 21 modules (SQL + YAML files)
+- [x] Hydrologist finds 27 datasets
+- [x] 38 lineage edges detected
+- [x] 15 transformations found
+- [ ] `stg_orders` identified as highest-blast-radius node (fans out to 4 marts)
+- [ ] `metricflow_time_spine` correctly classified as a utility/spine model, not a business sink
+- [ ] `macros/cents_to_dollars` registered as a module (SQL macro)
+- [ ] `source()` calls parsed correctly (not just `ref()`)
+- [ ] Seeds nested under `seeds/jaffle-data/` are detected as source nodes
+- [ ] Per-model `.yml` files linked to their corresponding `.sql` files
+- [ ] `stg_order_items` identified as second-highest fan-out node (feeds 3 marts)
+- [ ] System handles `generate_schema_name.sql` macro without crashing (no `ref()`/`source()` calls)

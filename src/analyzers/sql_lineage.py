@@ -108,7 +108,9 @@ class SQLLineageAnalyzer:
             if ref not in source_tables:
                 source_tables.append(ref)
         for src in dbt_sources:
-            canonical = src.replace(".", "_")
+            # Use __ to match the Jinja substitution format (schema__table),
+            # preventing ecom__raw_x and ecom_raw_x from becoming two separate nodes.
+            canonical = src.replace(".", "__")
             if canonical not in source_tables:
                 source_tables.append(canonical)
 

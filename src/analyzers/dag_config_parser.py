@@ -94,12 +94,15 @@ class DbtSchemaParser:
                 table_name = table.get("name", "")
                 if not table_name:
                     continue
+                # Use source__table naming to match {{ source('src', 'tbl') }} →
+                # ecom__raw_customers format produced by the SQL lineage analyzer.
+                canonical_name = f"{source_name}__{table_name}" if source_name else table_name
                 freshness = ""
                 if "freshness" in table:
                     freshness = str(table["freshness"])
                 nodes.append(
                     DatasetNode(
-                        name=table_name,
+                        name=canonical_name,
                         storage_type=StorageType.TABLE,
                         freshness_sla=freshness,
                         is_source_of_truth=True,

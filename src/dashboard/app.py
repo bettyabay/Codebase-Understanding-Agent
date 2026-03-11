@@ -99,7 +99,12 @@ def _build_pyvis_module_graph(kg, filter_domain: Optional[str] = None, min_pager
     net.set_options("""
     {
       "physics": {"barnesHut": {"gravitationalConstant": -3000, "springLength": 150}},
-      "edges": {"arrows": {"to": {"enabled": true, "scaleFactor": 0.5}}, "color": {"color": "#555"}},
+      "edges": {
+        "arrows": {"to": {"enabled": true, "scaleFactor": 1.2}},
+        "color": {"color": "#7eb8f7", "highlight": "#ffffff", "hover": "#ffffff"},
+        "width": 1.5,
+        "smooth": {"type": "curvedCW", "roundness": 0.2}
+      },
       "interaction": {"hover": true, "tooltipDelay": 100}
     }
     """)
@@ -153,7 +158,12 @@ def _build_pyvis_lineage_graph(kg):
     {
       "physics": {"hierarchicalRepulsion": {"centralGravity": 0.0}},
       "layout": {"hierarchical": {"enabled": false}},
-      "edges": {"arrows": {"to": {"enabled": true}}, "color": {"color": "#555"}},
+      "edges": {
+        "arrows": {"to": {"enabled": true, "scaleFactor": 1.2}},
+        "color": {"color": "#7eb8f7", "highlight": "#ffffff", "hover": "#ffffff"},
+        "width": 1.5,
+        "smooth": {"type": "curvedCW", "roundness": 0.2}
+      },
       "interaction": {"hover": true}
     }
     """)

@@ -46,6 +46,10 @@ class Hydrologist:
         yaml_files = [f for f in files if f.language == Language.YAML]
         py_files = [f for f in files if f.language == Language.PYTHON]
 
+        # dbt macro files define reusable functions, not data tables — exclude them
+        # from lineage so they don't appear as phantom sink nodes in the graph.
+        sql_files = [f for f in sql_files if "macros" not in f.path.parts]
+
         # dbt-specific: parse schema/sources before SQL so nodes already exist
         if repo_type == "dbt":
             self._ingest_dbt_metadata(repo_path, yaml_files, kg)
@@ -99,14 +103,15 @@ class Hydrologist:
             if fname.startswith("schema") or fname == "schema.yml":
                 for node in _dbt_schema_parser.parse_schema_yml(record.path):
                     kg.add_dataset(node)
-            if fname.startswith("sources") or fname == "sources.yml":
+            # Match both "sources.yml" and the v2 convention "__sources.yml"
+            if fname.endswith("sources.yml"):
                 for node in _dbt_schema_parser.parse_sources_yml(record.path):
                     kg.add_dataset(node)
 
-        # Add seed CSV files as source datasets
+        # Add seed CSV files as source datasets (search recursively for nested dirs)
         for seed_dir in (repo_path / "seeds", repo_path / "data"):
             if seed_dir.exists():
-                for csv_file in seed_dir.glob("*.csv"):
+                for csv_file in seed_dir.rglob("*.csv"):
                     kg.add_dataset(DatasetNode(
                         name=csv_file.stem,
                         storage_type=StorageType.FILE,

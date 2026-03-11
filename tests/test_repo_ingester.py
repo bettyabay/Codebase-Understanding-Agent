@@ -145,7 +145,7 @@ class TestIdentifyHighVelocityFiles:
 
 class TestDeriveRepoName:
     def test_github_url_slug(self):
-        assert derive_repo_name("https://github.com/dbt-labs/jaffle_shop") == "jaffle_shop"
+        assert derive_repo_name("https://github.com/dbt-labs/jaffle-shop.git") == "jaffle_shop"
 
     def test_strips_git_suffix(self):
         assert derive_repo_name("https://github.com/apache/airflow.git") == "airflow"

@@ -53,16 +53,16 @@ Without any API key, pass `--skip-llm` to run static analysis only (Surveyor + H
 
 ```bash
 # Analyze a GitHub URL (auto-derives repo name: jaffle_shop)
-python src/cli.py analyze https://github.com/dbt-labs/jaffle_shop
+python src/cli.py analyze https://github.com/dbt-labs/jaffle-shop.git
 
 # Analyze a local path
 python src/cli.py analyze /path/to/your/repo
 
 # Override the repo name used for output directories
-python src/cli.py analyze https://github.com/dbt-labs/jaffle_shop --name my_dbt_project
+python src/cli.py analyze https://github.com/dbt-labs/jaffle-shop.git --name my_dbt_project
 
 # Skip LLM analysis (faster, no API key needed)
-python src/cli.py analyze https://github.com/dbt-labs/jaffle_shop --skip-llm
+python src/cli.py analyze https://github.com/dbt-labs/jaffle-shop.git --skip-llm
 
 # Custom output directory (overrides the .cartography/<name>/ default)
 python src/cli.py analyze /path/to/repo --output ./my-cartography
@@ -75,7 +75,7 @@ Outputs land in `.cartography/<repo_name>/` and the clone in `repo_cache/<repo_n
 Each repo gets its own namespace:
 
 ```bash
-python src/cli.py analyze https://github.com/dbt-labs/jaffle_shop --skip-llm
+python src/cli.py analyze https://github.com/dbt-labs/jaffle-shop.git --skip-llm
 python src/cli.py analyze https://github.com/apache/airflow --skip-llm
 
 # Results:

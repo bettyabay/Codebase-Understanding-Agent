@@ -390,7 +390,7 @@ Verify: launch dashboard against `jaffle_shop` cartography output. All six pages
    - Any missing `.cartography/` directory: create it automatically
 3. Final `README.md`:
    - Installation: `uv sync`
-   - Analyze a GitHub URL: `python src/cli.py analyze https://github.com/dbt-labs/jaffle_shop`
+   - Analyze a GitHub URL: `python src/cli.py analyze https://github.com/dbt-labs/jaffle-shop.git`
    - Interactive query: `python src/cli.py query --cartography-dir .cartography/`
    - Launch dashboard: `python src/cli.py dashboard --cartography-dir .cartography/`
 4. Prepare Final PDF Report and record the 6-minute demo video

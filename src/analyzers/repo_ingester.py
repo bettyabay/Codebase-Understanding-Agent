@@ -47,7 +47,7 @@ def derive_repo_name(repo_path: str) -> str:
     """Derive a short filesystem-safe name from a repo URL or local path.
 
     Examples:
-      https://github.com/dbt-labs/jaffle_shop  → jaffle_shop
+      https://github.com/dbt-labs/jaffle-shop.git  → jaffle_shop
       https://github.com/apache/airflow.git    → airflow
       /home/user/my-project                    → my_project
     """
@@ -69,10 +69,20 @@ def clone_if_remote(repo_path: str, cache_dir: Optional[Path] = None) -> Path:
         repo_name = derive_repo_name(repo_path)
         root = cache_dir or Path(tempfile.mkdtemp(prefix="cartographer_"))
         dest = root / repo_name
+
+        # Already a valid git clone — reuse it
         if dest.exists() and (dest / ".git").exists():
             console.print(f"[cyan]Using existing clone[/cyan] at {dest}")
             return dest
-        dest.mkdir(parents=True, exist_ok=True)
+
+        # Directory exists with content but no .git (e.g. manually placed files,
+        # or a previous partial clone) — use as-is rather than crashing
+        if dest.exists() and any(dest.iterdir()):
+            console.print(f"[yellow]Directory exists at {dest} — using without re-cloning[/yellow]")
+            return dest
+
+        # Ensure only the PARENT exists; let GitPython create dest itself
+        root.mkdir(parents=True, exist_ok=True)
         console.print(f"[cyan]Cloning[/cyan] {repo_path} -> {dest}")
         try:
             import git

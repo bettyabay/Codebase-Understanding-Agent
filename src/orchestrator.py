@@ -202,7 +202,7 @@ class Orchestrator:
                     added += 1
 
         if added:
-            console.print(f"  [dim]Bridged {added} SQL lineage → module import edges[/dim]")
+            console.print(f"  [dim]Bridged {added} SQL lineage -> module import edges[/dim]")
 
     def _flush_parse_errors(self, kg) -> None:
         """Write accumulated parse errors to the trace file (confidence=0.0) and clear the list."""

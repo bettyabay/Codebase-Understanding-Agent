@@ -24,6 +24,18 @@ def _is_rate_limit(exc: Exception) -> bool:
     return any(marker in msg for marker in _RATE_LIMIT_MARKERS)
 
 
+def _parse_retry_delay(exc: Exception, default: float = 60.0) -> float:
+    """Extract the suggested retry delay in seconds from a 429 error message."""
+    import re
+    match = re.search(r"retryDelay['\"]?\s*:\s*['\"]?(\d+)s", str(exc))
+    if match:
+        return float(match.group(1))
+    match = re.search(r"retry in\s+([\d.]+)s", str(exc), re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    return default
+
+
 FIVE_QUESTIONS = [
     "What is the primary data ingestion path?",
     "What are the 3–5 most critical output datasets or endpoints?",
@@ -71,14 +83,23 @@ class Semanticist:
     def __init__(self) -> None:
         self.budget = ContextWindowBudget()
         self._llm_client = None
+        self._llm_provider: str | None = None  # "gemini" | "openai" | "groq"
+        # Separate Gemini client kept alive so we can switch back after cooldown
+        self._gemini_client = None
+        # Unix timestamp after which Gemini may be tried again (0 = not rate-limited)
+        self._gemini_available_at: float = 0.0
 
     def analyze(self, kg: KnowledgeGraph, repo_path: Optional[Path] = None) -> dict:
         console.print("[bold cyan]Semanticist[/bold cyan] - running LLM analysis...")
 
         client = self._get_llm_client()
         if client is None:
-            console.print("  [yellow]WARN[/yellow]  No LLM API key configured - skipping semantic analysis")
+            console.print(
+                "  [yellow]WARN[/yellow]  No LLM API key found "
+                "(GOOGLE_API_KEY / OPENAI_API_KEY / GROQ_API_KEY) — skipping semantic analysis"
+            )
             return {}
+        console.print(f"  [dim]Using provider: {self._llm_provider}[/dim]")
 
         modules = kg.all_modules()
         console.print(f"  Generating purpose statements for {len(modules)} modules...")
@@ -86,10 +107,9 @@ class Semanticist:
         with Progress(TextColumn("{task.description}"), console=console) as prog:
             t = prog.add_task("Analyzing modules...", total=len(modules))
             for module in modules:
-                if repo_path:
-                    source = self._read_source(repo_path, module.path)
-                    if source:
-                        self.generate_purpose_statement(module, source)
+                source = self._read_source(repo_path, module.path) if repo_path else ""
+                if source:
+                    self.generate_purpose_statement(module, source)
                 prog.advance(t)
 
         if len(modules) >= 3:
@@ -104,8 +124,7 @@ class Semanticist:
         return day_one
 
     def generate_purpose_statement(self, module: ModuleNode, source_code: str) -> str:
-        client = self._get_llm_client()
-        if client is None:
+        if self._get_llm_client() is None:
             return ""
 
         token_count = self.budget.estimate_tokens(source_code)
@@ -115,13 +134,39 @@ class Semanticist:
         if token_count > 6000:
             source_code = source_code[: 6000 * 4]
 
-        prompt = (
-            "Given the following Python source code, write a 2–3 sentence description "
-            "of what this module does in terms of BUSINESS FUNCTION, not implementation detail. "
-            "Do NOT reference the docstring — derive your answer entirely from the code itself.\n\n"
-            f"```python\n{source_code}\n```\n\n"
-            "Respond with only the description, no preamble."
-        )
+        lang_str = str(module.language).replace("Language.", "").lower()
+
+        if lang_str == "sql":
+            prompt = (
+                "Given the following SQL/dbt model, write a 2–3 sentence description "
+                "of what this transformation does in terms of BUSINESS FUNCTION. "
+                "Mention what input tables it reads from and what output dataset it produces.\n\n"
+                f"```sql\n{source_code}\n```\n\n"
+                "Respond with only the description, no preamble."
+            )
+        elif lang_str == "yaml":
+            prompt = (
+                "Given the following dbt YAML configuration, write a 1–2 sentence description "
+                "of what this file configures — e.g. schema definitions, source declarations, "
+                "or test coverage — in plain business terms.\n\n"
+                f"```yaml\n{source_code}\n```\n\n"
+                "Respond with only the description, no preamble."
+            )
+        elif lang_str == "javascript":
+            prompt = (
+                "Given the following JavaScript/TypeScript source, write a 2–3 sentence description "
+                "of what this module does in terms of BUSINESS FUNCTION, not implementation detail.\n\n"
+                f"```javascript\n{source_code}\n```\n\n"
+                "Respond with only the description, no preamble."
+            )
+        else:
+            prompt = (
+                "Given the following Python source code, write a 2–3 sentence description "
+                "of what this module does in terms of BUSINESS FUNCTION, not implementation detail. "
+                "Do NOT reference the docstring — derive your answer entirely from the code itself.\n\n"
+                f"```python\n{source_code}\n```\n\n"
+                "Respond with only the description, no preamble."
+            )
 
         try:
             purpose = self._call_llm(prompt, model)
@@ -249,20 +294,35 @@ class Semanticist:
         if self._llm_client is not None:
             return self._llm_client
 
-        if os.getenv("OPENAI_API_KEY"):
+        # Priority: Gemini (free tier) > Groq > OpenAI
+        # Uses the new google-genai SDK (from google import genai), not the old google-generativeai.
+        if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
             try:
-                from openai import OpenAI
-                self._llm_client = OpenAI()
+                from google import genai  # new SDK: pip install google-genai
+                api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+                gemini_client = genai.Client(api_key=api_key)
+                self._gemini_client = gemini_client  # kept for cooldown recovery
+                self._llm_client = gemini_client
+                self._llm_provider = "gemini"
+                return self._llm_client
+            except (ImportError, Exception) as exc:
+                logger.warning("Gemini client init failed: %s — trying next provider", exc)
+
+        groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
+        if groq_key:
+            try:
+                from groq import Groq
+                self._llm_client = Groq(api_key=groq_key)
+                self._llm_provider = "groq"
                 return self._llm_client
             except ImportError:
                 pass
 
-        if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
+        if os.getenv("OPENAI_API_KEY"):
             try:
-                import google.generativeai as genai
-                api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-                genai.configure(api_key=api_key)
-                self._llm_client = genai
+                from openai import OpenAI
+                self._llm_client = OpenAI()
+                self._llm_provider = "openai"
                 return self._llm_client
             except ImportError:
                 pass
@@ -270,21 +330,57 @@ class Semanticist:
         return None
 
     def _call_llm(self, prompt: str, model: str, _retries: int = 1) -> str:
-        """Call the configured LLM with retry and Groq rate-limit fallback.
+        """Call the configured LLM with retry and Groq cooldown fallback.
 
-        Flow: primary (Gemini/OpenAI) → retry once → Groq fallback on rate-limit.
+        Flow:
+          - Tries Gemini first (if available).
+          - On 429: routes this call to Groq, records the retry-delay from the error
+            response, and switches the active provider to Groq.
+          - On every subsequent call: checks whether the cooldown has expired.
+            If yes, switches back to Gemini automatically.
+          - Groq is therefore used only during the rate-limit window, then Gemini
+            resumes — cycling as many times as needed across 21+ modules.
         """
         import time
 
+        # Auto-recover: if we're on Groq due to a cooldown and the window has passed,
+        # switch back to Gemini now before routing this call.
+        if (
+            self._llm_provider == "groq"
+            and self._gemini_client is not None
+            and time.time() >= self._gemini_available_at
+            and self._gemini_available_at > 0  # 0 means Groq was the primary choice
+        ):
+            self._llm_client = self._gemini_client
+            self._llm_provider = "gemini"
+            console.print("  [dim]Gemini cooldown expired — resuming Gemini[/dim]")
+
         client = self._get_llm_client()
         if client is None:
-            return self._call_groq(prompt)
-
-        openai_models = {"gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"}
+            return ""
 
         for attempt in range(_retries + 1):
             try:
-                if model in openai_models or hasattr(client, "chat"):
+                if self._llm_provider == "gemini":
+                    # New google-genai SDK: client is a genai.Client instance
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=prompt,
+                    )
+                    return response.text or ""
+
+                elif self._llm_provider == "groq":
+                    groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+                    response = client.chat.completions.create(
+                        model=groq_model,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=1024,
+                        temperature=0.2,
+                    )
+                    return response.choices[0].message.content or ""
+
+                else:
+                    # OpenAI
                     actual_model = "gpt-4o-mini" if model == "gemini-flash" else model
                     response = client.chat.completions.create(
                         model=actual_model,
@@ -293,15 +389,18 @@ class Semanticist:
                         temperature=0.2,
                     )
                     return response.choices[0].message.content or ""
-                else:
-                    # Google Generative AI (Gemini 2.5 Flash free tier)
-                    flash_model = client.GenerativeModel("gemini-2.5-flash")
-                    response = flash_model.generate_content(prompt)
-                    return response.text or ""
+
             except Exception as exc:
-                if _is_rate_limit(exc):
-                    logger.warning("Rate limit hit — falling back to Groq: %s", exc)
+                if self._llm_provider == "gemini" and _is_rate_limit(exc):
+                    delay = _parse_retry_delay(exc)
+                    self._enter_groq_cooldown(delay)
                     return self._call_groq(prompt)
+
+                if self._llm_provider == "gemini" and attempt >= _retries:
+                    # Non-rate-limit Gemini error after retries — fall back once
+                    logger.warning("Gemini failed (%s) — falling back to Groq", exc)
+                    return self._call_groq(prompt)
+
                 if attempt < _retries:
                     wait = 2 ** attempt
                     logger.warning(
@@ -310,8 +409,7 @@ class Semanticist:
                     )
                     time.sleep(wait)
                 else:
-                    logger.warning("LLM call failed after %d attempts: %s — trying Groq", _retries + 1, exc)
-                    return self._call_groq(prompt)
+                    logger.warning("LLM call failed after %d attempts: %s", _retries + 1, exc)
         return ""
 
     def _call_groq(self, prompt: str) -> str:
@@ -334,6 +432,28 @@ class Semanticist:
         except Exception as exc:
             logger.warning("Groq fallback failed: %s", exc)
             return ""
+
+    def _enter_groq_cooldown(self, delay_seconds: float) -> None:
+        """Switch to Groq and record when Gemini's rate-limit window expires.
+
+        After `delay_seconds` have elapsed, `_call_llm` will automatically
+        switch back to Gemini at the start of the next call.
+        """
+        import time
+        groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
+        if not groq_key:
+            return
+        try:
+            from groq import Groq
+            self._llm_client = Groq(api_key=groq_key)
+            self._llm_provider = "groq"
+            self._gemini_available_at = time.time() + delay_seconds
+            console.print(
+                f"  [yellow]Gemini rate-limited — using Groq for ~{int(delay_seconds)}s, "
+                f"then Gemini resumes[/yellow]"
+            )
+        except ImportError:
+            pass
 
     def _embed_texts(self, texts: list[str]):
         try:
@@ -385,9 +505,16 @@ class Semanticist:
         return " ".join(docstring_lines)
 
     def _read_source(self, repo_path: Path, module_path: str) -> str:
+        """Resolve a module key back to a source file, trying all supported extensions."""
+        base = repo_path / module_path.replace("/", os.sep)
         candidates = [
-            repo_path / (module_path.replace("/", os.sep) + ".py"),
-            repo_path / module_path,
+            Path(str(base) + ".py"),
+            Path(str(base) + ".sql"),
+            Path(str(base) + ".yml"),
+            Path(str(base) + ".yaml"),
+            Path(str(base) + ".js"),
+            Path(str(base) + ".ts"),
+            base,  # already has extension (e.g. stored with it)
         ]
         for candidate in candidates:
             if candidate.exists():

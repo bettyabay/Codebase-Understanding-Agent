@@ -38,6 +38,8 @@ class ModuleNode(BaseModel):
     lines_of_code: int = 0
     imports: list[str] = Field(default_factory=list)
     exports: list[str] = Field(default_factory=list)
+    # Each entry: {"name": "MyClass", "bases": ["BaseClass"], "line_start": 10}
+    classes: list[dict] = Field(default_factory=list)
 
 
 class DatasetNode(BaseModel):

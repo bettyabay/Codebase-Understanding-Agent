@@ -9,10 +9,13 @@ from __future__ import annotations
 import pytest
 
 from src.analyzers.tree_sitter_analyzer import (
+    JSASTAnalyzer,
     PythonASTAnalyzer,
     PythonDataFlowAnalyzer,
     YAMLASTAnalyzer,
+    _js_regex_imports,
     _regex_complexity,
+    _regex_extract_classes,
     _regex_extract_imports,
     _yaml_regex_keys,
 )
@@ -20,6 +23,7 @@ from src.analyzers.tree_sitter_analyzer import (
 analyzer = PythonASTAnalyzer()
 flow_analyzer = PythonDataFlowAnalyzer()
 yaml_analyzer = YAMLASTAnalyzer()
+js_analyzer = JSASTAnalyzer()
 
 _SIMPLE_MODULE = """\
 \"\"\"A simple module.\"\"\"
@@ -39,6 +43,46 @@ def _private(z):
 
 class MyClass:
     pass
+
+class Child(MyClass):
+    pass
+
+class MultiInherit(MyClass, dict):
+    pass
+"""
+
+_JS_MODULE = """\
+import { useState } from 'react';
+import utils from './utils';
+const path = require('path');
+
+function greet(name) {
+  if (name) {
+    return 'Hello ' + name;
+  }
+  return 'Hello';
+}
+
+const _internal = () => 42;
+
+class Animal {
+  constructor(name) { this.name = name; }
+}
+
+class Dog extends Animal {
+  bark() { return 'Woof'; }
+}
+"""
+
+_TS_MODULE = """\
+import { Component } from '@angular/core';
+import type { User } from './models';
+
+export class UserService extends Component {
+  getUser(id: number): User | null {
+    return null;
+  }
+}
 """
 
 _DATAFLOW_MODULE = """\
@@ -126,9 +170,18 @@ class TestExtractFunctions:
 # ── PythonASTAnalyzer.extract_classes ─────────────────────────────────────────
 
 class TestExtractClasses:
-    def test_detects_class_names(self):
+    def test_returns_list_of_dicts(self):
         classes = analyzer.extract_classes(_SIMPLE_MODULE)
-        assert "MyClass" in classes
+        assert isinstance(classes, list)
+        for c in classes:
+            assert "name" in c
+            assert "bases" in c
+            assert "line_start" in c
+
+    def test_detects_class_name(self):
+        classes = analyzer.extract_classes(_SIMPLE_MODULE)
+        names = [c["name"] for c in classes]
+        assert "MyClass" in names
 
     def test_empty_source_returns_empty(self):
         assert analyzer.extract_classes("") == []
@@ -136,8 +189,152 @@ class TestExtractClasses:
     def test_multiple_classes(self):
         src = "class A: pass\nclass B: pass\n"
         classes = analyzer.extract_classes(src)
-        assert "A" in classes
-        assert "B" in classes
+        names = [c["name"] for c in classes]
+        assert "A" in names
+        assert "B" in names
+
+    def test_single_inheritance_captured(self):
+        classes = analyzer.extract_classes(_SIMPLE_MODULE)
+        child = next((c for c in classes if c["name"] == "Child"), None)
+        assert child is not None
+        assert "MyClass" in child["bases"]
+
+    def test_multiple_inheritance_captured(self):
+        classes = analyzer.extract_classes(_SIMPLE_MODULE)
+        multi = next((c for c in classes if c["name"] == "MultiInherit"), None)
+        assert multi is not None
+        assert len(multi["bases"]) == 2
+
+    def test_no_inheritance_gives_empty_bases(self):
+        classes = analyzer.extract_classes(_SIMPLE_MODULE)
+        base = next((c for c in classes if c["name"] == "MyClass"), None)
+        assert base is not None
+        assert base["bases"] == []
+
+    def test_line_start_populated(self):
+        classes = analyzer.extract_classes(_SIMPLE_MODULE)
+        for c in classes:
+            assert c["line_start"] >= 1
+
+
+# ── _regex_extract_classes fallback ───────────────────────────────────────────
+
+class TestRegexExtractClasses:
+    def test_detects_names(self):
+        src = "class Foo:\n    pass\nclass Bar(Foo):\n    pass\n"
+        classes = _regex_extract_classes(src)
+        names = [c["name"] for c in classes]
+        assert "Foo" in names
+        assert "Bar" in names
+
+    def test_captures_inheritance(self):
+        src = "class Bar(Foo):\n    pass\n"
+        classes = _regex_extract_classes(src)
+        bar = next(c for c in classes if c["name"] == "Bar")
+        assert "Foo" in bar["bases"]
+
+    def test_no_bases_returns_empty_list(self):
+        src = "class Baz:\n    pass\n"
+        classes = _regex_extract_classes(src)
+        baz = next(c for c in classes if c["name"] == "Baz")
+        assert baz["bases"] == []
+
+
+# ── JSASTAnalyzer ─────────────────────────────────────────────────────────────
+
+class TestJSASTAnalyzerImports:
+    def test_detects_es_import(self):
+        imports = js_analyzer.extract_imports(_JS_MODULE)
+        assert "react" in imports
+
+    def test_detects_relative_import(self):
+        imports = js_analyzer.extract_imports(_JS_MODULE)
+        assert "./utils" in imports
+
+    def test_detects_require(self):
+        imports = js_analyzer.extract_imports(_JS_MODULE)
+        assert "path" in imports
+
+    def test_no_duplicates(self):
+        src = "import x from 'mod';\nimport y from 'mod';\n"
+        imports = js_analyzer.extract_imports(src)
+        assert imports.count("mod") == 1
+
+    def test_empty_returns_empty(self):
+        assert js_analyzer.extract_imports("const x = 1;") == []
+
+
+class TestJSASTAnalyzerFunctions:
+    def test_detects_function_declaration(self):
+        fns = js_analyzer.extract_functions(_JS_MODULE, module_path="mod")
+        names = [f.qualified_name for f in fns]
+        assert any("greet" in n for n in names)
+
+    def test_public_api_flag(self):
+        fns = js_analyzer.extract_functions(_JS_MODULE, module_path="mod")
+        pub = [f for f in fns if "greet" in f.qualified_name]
+        priv = [f for f in fns if "_internal" in f.qualified_name]
+        if pub:
+            assert pub[0].is_public_api is True
+        if priv:
+            assert priv[0].is_public_api is False
+
+    def test_line_numbers_populated(self):
+        fns = js_analyzer.extract_functions(_JS_MODULE, module_path="mod")
+        for f in fns:
+            assert f.line_start >= 1
+
+
+class TestJSASTAnalyzerClasses:
+    def test_detects_class_names(self):
+        classes = js_analyzer.extract_classes(_JS_MODULE)
+        names = [c["name"] for c in classes]
+        assert "Animal" in names
+        assert "Dog" in names
+
+    def test_captures_extends(self):
+        classes = js_analyzer.extract_classes(_JS_MODULE)
+        dog = next((c for c in classes if c["name"] == "Dog"), None)
+        assert dog is not None
+        assert "Animal" in dog["bases"]
+
+    def test_no_extends_gives_empty_bases(self):
+        classes = js_analyzer.extract_classes(_JS_MODULE)
+        animal = next((c for c in classes if c["name"] == "Animal"), None)
+        assert animal is not None
+        assert animal["bases"] == []
+
+    def test_typescript_class_with_extends(self):
+        classes = js_analyzer.extract_classes(_TS_MODULE, language="typescript")
+        names = [c["name"] for c in classes]
+        assert "UserService" in names
+        svc = next(c for c in classes if c["name"] == "UserService")
+        assert "Component" in svc["bases"]
+
+
+class TestJSASTAnalyzerComplexity:
+    def test_zero_for_simple_code(self):
+        score = js_analyzer.compute_complexity("const x = 1;")
+        assert score == 0
+
+    def test_if_increases_complexity(self):
+        score = js_analyzer.compute_complexity("if (x) { return 1; }")
+        assert score >= 1
+
+    def test_returns_int(self):
+        assert isinstance(js_analyzer.compute_complexity(_JS_MODULE), int)
+
+
+class TestJSRegexImportFallback:
+    def test_detects_import_from(self):
+        src = "import React from 'react';\nimport { useState } from 'react';\n"
+        imports = _js_regex_imports(src)
+        assert "react" in imports
+
+    def test_detects_require(self):
+        src = "const fs = require('fs');\n"
+        imports = _js_regex_imports(src)
+        assert "fs" in imports
 
 
 # ── PythonASTAnalyzer.compute_complexity ──────────────────────────────────────

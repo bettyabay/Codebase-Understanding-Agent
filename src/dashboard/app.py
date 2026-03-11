@@ -105,7 +105,7 @@ def _build_pyvis_module_graph(kg, filter_domain: Optional[str] = None, min_pager
         "width": 1.5,
         "smooth": {"type": "curvedCW", "roundness": 0.2}
       },
-      "interaction": {"hover": true, "tooltipDelay": 100}
+      "interaction": {"hover": true, "tooltipDelay": 50, "hideEdgesOnDrag": false}
     }
     """)
 
@@ -128,17 +128,29 @@ def _build_pyvis_module_graph(kg, filter_domain: Optional[str] = None, min_pager
             # No domain yet — color by language so SQL/YAML/Python are visually distinct
             color = _LANGUAGE_COLORS.get(str(module.language), "#999999")
 
-        size = max(12, min(60, int(module.pagerank_score * 5000) + 12))
+        size = max(14, min(60, int(module.pagerank_score * 5000) + 14))
+        flags = ""
+        if module.is_dead_code_candidate:
+            flags += " &nbsp;<b style='color:#f39c12'>⚠ dead-code</b>"
+        if module.in_cycle:
+            flags += " &nbsp;<b style='color:#e74c3c'>🔄 cycle</b>"
+        purpose_html = (
+            f"<hr style='border-color:#555;margin:4px 0'>"
+            f"<i style='color:#aaa'>{(module.purpose_statement or 'No purpose statement — run without --skip-llm')[:220]}</i>"
+        )
         tooltip = (
-            f"<b>{module.path}</b><br>"
-            f"Language: {module.language}<br>"
-            f"Domain: {domain or '—'}<br>"
-            f"LOC: {module.lines_of_code} · Complexity: {module.complexity_score}<br>"
-            f"Velocity (30d): {module.change_velocity_30d}<br>"
-            f"PageRank: {module.pagerank_score:.4f}<br>"
-            f"{'⚠ Dead code candidate  ' if module.is_dead_code_candidate else ''}"
-            f"{'🔄 In cycle' if module.in_cycle else ''}<br>"
-            f"<i>{(module.purpose_statement or '')[:200]}</i>"
+            f"<div style='background:#1e1e2e;padding:8px 12px;border-radius:6px;"
+            f"border:1px solid #444;font-size:13px;max-width:340px;line-height:1.6'>"
+            f"<b style='color:#7eb8f7;font-size:14px'>{module.path}</b><br>"
+            f"<span style='color:#888'>Lang:</span> <b>{str(module.language).replace('Language.','')}</b> &nbsp; "
+            f"<span style='color:#888'>Domain:</span> <b>{domain or '—'}</b><br>"
+            f"<span style='color:#888'>LOC:</span> {module.lines_of_code} &nbsp; "
+            f"<span style='color:#888'>Complexity:</span> {module.complexity_score} &nbsp; "
+            f"<span style='color:#888'>Velocity:</span> {module.change_velocity_30d}/30d<br>"
+            f"<span style='color:#888'>PageRank:</span> <b style='color:#f39c12'>{module.pagerank_score:.6f}</b>"
+            f"{flags}"
+            f"{purpose_html}"
+            f"</div>"
         )
         net.add_node(module.path, label=_node_label(module.path), color=color,
                      size=size, title=tooltip)
@@ -229,11 +241,62 @@ def page_system_map(kg) -> None:
         )
         return
 
+    pr_scores = [m.pagerank_score for m in all_modules]
+    pr_min = min(pr_scores)
+    pr_max = max(pr_scores)
+    pr_uniform = (pr_max - pr_min) < 1e-6
+
     col1, col2 = st.columns([2, 1])
     with col2:
         domains = sorted({m.domain_cluster or "uncategorized" for m in all_modules})
         selected_domain = st.selectbox("Filter by domain", ["All"] + domains)
-        min_pr = st.slider("Min PageRank", 0.0, 0.01, 0.0, step=0.0001, format="%.4f")
+
+        # Dynamic slider range based on actual scores
+        slider_max = max(0.001, round(pr_max + 0.001, 4))
+        slider_step = max(0.0001, round((pr_max - pr_min + 0.0001) / 50, 5))
+        min_pr = st.slider(
+            "Min PageRank",
+            min_value=0.0,
+            max_value=slider_max,
+            value=0.0,
+            step=slider_step,
+            format="%.4f",
+            help=f"Scores range: {pr_min:.4f} – {pr_max:.4f}",
+        )
+
+        if pr_uniform:
+            st.caption(
+                f"ℹ All {len(all_modules)} nodes share the same PageRank "
+                f"({pr_max:.4f} = 1/{len(all_modules)}). "
+                "This is expected for small repos with sparse edges. "
+                "Re-run analysis — PageRank now recomputes after SQL edges are bridged."
+            )
+
+        # Module inspector — pick any node to see its full metadata
+        st.markdown("---")
+        st.subheader("Module Inspector")
+        module_paths = sorted(m.path for m in all_modules)
+        selected_path = st.selectbox("Inspect node", module_paths, key="inspector_select")
+        inspected = next((m for m in all_modules if m.path == selected_path), None)
+        if inspected:
+            lang_str = str(inspected.language).replace("Language.", "") if inspected.language else "—"
+            st.markdown(f"**Path:** `{inspected.path}`")
+            st.markdown(f"**Language:** `{lang_str}`")
+            st.markdown(f"**Domain:** `{inspected.domain_cluster or '— (no LLM run yet)'}`")
+            st.markdown(f"**LOC:** {inspected.lines_of_code} &nbsp; **Complexity:** {inspected.complexity_score}")
+            st.markdown(f"**Velocity (30d):** {inspected.change_velocity_30d} commits")
+            st.markdown(f"**PageRank:** {inspected.pagerank_score:.6f}")
+            flags = []
+            if inspected.is_dead_code_candidate:
+                flags.append("⚠ Dead-code candidate")
+            if inspected.in_cycle:
+                flags.append("🔄 In cycle")
+            if flags:
+                st.warning("  |  ".join(flags))
+            if inspected.purpose_statement:
+                st.info(f"**Purpose:** {inspected.purpose_statement}")
+            else:
+                st.caption("Purpose statement not yet generated — run without `--skip-llm`.")
 
     filter_domain = None if selected_domain == "All" else selected_domain
 
@@ -250,16 +313,19 @@ def page_system_map(kg) -> None:
             st.warning("No nodes match the current filters. Try relaxing the PageRank threshold or domain filter.")
         else:
             html = net.generate_html()
-            st.components.v1.html(html, height=620, scrolling=False)
+            st.components.v1.html(html, height=640, scrolling=False)
 
-    with col2:
-        st.subheader("Top Modules (PageRank)")
+        # Ranked table below graph
+        st.subheader("Top Modules by PageRank")
         top = sorted(all_modules, key=lambda m: m.pagerank_score, reverse=True)[:10]
-        for m in top:
+        for rank, m in enumerate(top, 1):
             lang_str = str(m.language).replace("Language.", "") if m.language else ""
-            st.markdown(f"**`{_node_label(m.path)}`** `{lang_str}` — {m.pagerank_score:.4f}")
+            col_r, col_l, col_p = st.columns([1, 5, 2])
+            col_r.markdown(f"**#{rank}**")
+            col_l.markdown(f"`{_node_label(m.path)}` `{lang_str}`")
+            col_p.markdown(f"`{m.pagerank_score:.4f}`")
             if m.purpose_statement:
-                st.caption(m.purpose_statement[:100])
+                st.caption(f"  ↳ {m.purpose_statement[:120]}")
 
 
 def page_lineage_graph(kg) -> None:

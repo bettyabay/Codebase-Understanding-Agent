@@ -79,6 +79,10 @@ class Orchestrator:
         # Bridge SQL/dbt lineage into the module graph so the System Map shows
         # SQL model dependencies (e.g. orders.sql → stg_orders.sql).
         self._bridge_sql_lineage_to_modules(kg)
+        # Recompute PageRank now that bridged SQL edges have been added —
+        # without this the scores stay uniform (all nodes = 1/N) because
+        # SQL/YAML files had zero Python-style import edges at survey time.
+        self.surveyor._compute_pagerank(kg)
 
         # Phase 3: Semanticist (optional - requires API key)
         day_one_answers: dict = {}

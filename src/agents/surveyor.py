@@ -13,7 +13,7 @@ from src.analyzers.repo_ingester import (
     identify_high_velocity_files,
     walk_repo,
 )
-from src.analyzers.tree_sitter_analyzer import PythonASTAnalyzer
+from src.analyzers.tree_sitter_analyzer import JSASTAnalyzer, PythonASTAnalyzer
 from src.graph.knowledge_graph import KnowledgeGraph
 from src.models.edges import ImportEdge
 from src.models.nodes import Language, ModuleNode
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 _py_analyzer = PythonASTAnalyzer()
+_js_analyzer = JSASTAnalyzer()
 
 
 class Surveyor:
@@ -41,19 +42,25 @@ class Surveyor:
         python_files = [f for f in files if f.language == Language.PYTHON]
         sql_files = [f for f in files if f.language == Language.SQL]
         yaml_files = [f for f in files if f.language == Language.YAML]
+        js_files = [f for f in files if f.language == Language.JAVASCRIPT]
 
         console.print(
             f"  Found [yellow]{len(files)}[/yellow] source files "
             f"([yellow]{len(python_files)}[/yellow] Python, "
             f"[yellow]{len(sql_files)}[/yellow] SQL, "
-            f"[yellow]{len(yaml_files)}[/yellow] YAML)"
+            f"[yellow]{len(yaml_files)}[/yellow] YAML, "
+            f"[yellow]{len(js_files)}[/yellow] JS/TS)"
         )
 
         with Progress(TextColumn("{task.description}"), console=console) as progress:
-            task = progress.add_task("Parsing modules...", total=len(python_files))
+            task = progress.add_task("Parsing modules...", total=len(python_files) + len(js_files))
 
             for record in python_files:
                 self._analyze_python_file(record, kg, velocity, high_velocity)
+                progress.advance(task)
+
+            for record in js_files:
+                self._analyze_js_file(record, kg, velocity, high_velocity)
                 progress.advance(task)
 
         # Add SQL and YAML files as lightweight module nodes so they appear
@@ -91,9 +98,13 @@ class Surveyor:
 
         imports = _py_analyzer.extract_imports(source)
         functions = _py_analyzer.extract_functions(source, module_path=rel_key)
+        classes = _py_analyzer.extract_classes(source)
         complexity = _py_analyzer.compute_complexity(source)
         loc = _py_analyzer.count_lines(source)
         exports = [f.qualified_name.split("::")[-1] for f in functions if f.is_public_api]
+        # Add public class names to exports so the dead-code heuristic treats
+        # files that only expose classes as non-dead.
+        exports += [c["name"] for c in classes if not c["name"].startswith("_")]
 
         rel_str = str(record.path.name)
         vel = velocity.get(rel_str, 0)
@@ -107,6 +118,7 @@ class Surveyor:
             lines_of_code=loc,
             imports=imports,
             exports=exports,
+            classes=classes,
         )
         kg.add_module(module)
 
@@ -116,6 +128,58 @@ class Surveyor:
         for imp in imports:
             normalized = imp.replace(".", "/")
             kg.add_import_edge(ImportEdge(source_module=rel_key, target_module=normalized))
+
+    def _analyze_js_file(
+        self,
+        record: FileRecord,
+        kg: KnowledgeGraph,
+        velocity: dict[str, int],
+        high_velocity: set[str],
+    ) -> None:
+        """Full AST analysis for JavaScript / TypeScript files."""
+        try:
+            source = record.path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            logger.warning("Cannot read %s: %s", record.path, exc)
+            kg.record_parse_error(str(record.path), "surveyor", str(exc))
+            return
+
+        # Detect TypeScript by extension
+        lang = "typescript" if record.path.suffix.lower() == ".ts" else "javascript"
+        rel_key = _to_module_key(record.path)
+
+        imports = _js_analyzer.extract_imports(source, language=lang)
+        functions = _js_analyzer.extract_functions(source, module_path=rel_key, language=lang)
+        classes = _js_analyzer.extract_classes(source, language=lang)
+        complexity = _js_analyzer.compute_complexity(source, language=lang)
+        loc = _js_analyzer.count_lines(source)
+
+        exports = [f.qualified_name.split("::")[-1] for f in functions if f.is_public_api]
+        exports += [c["name"] for c in classes if not c["name"].startswith("_")]
+
+        vel = velocity.get(record.path.name, velocity.get(str(record.path), 0))
+
+        module = ModuleNode(
+            path=rel_key,
+            language=Language.JAVASCRIPT,
+            complexity_score=complexity,
+            change_velocity_30d=vel,
+            last_modified=record.last_modified,
+            lines_of_code=loc,
+            imports=imports,
+            exports=exports,
+            classes=classes,
+        )
+        kg.add_module(module)
+
+        for func in functions:
+            kg.add_function(func)
+
+        for imp in imports:
+            # Resolve relative imports; skip node_modules (external) paths
+            if imp.startswith("."):
+                normalized = imp.lstrip("./").replace("/", "_")
+                kg.add_import_edge(ImportEdge(source_module=rel_key, target_module=normalized))
 
     def _add_file_as_module(
         self,
@@ -170,11 +234,20 @@ class Surveyor:
             console.print(f"  [yellow]WARN[/yellow]  {cycle_count} circular dependency groups detected")
 
     def _flag_dead_code(self, kg: KnowledgeGraph) -> None:
+        """Flag Python modules with no importers and no public exports as dead code.
+
+        SQL, YAML, and JS/TS files are intentionally excluded — they use data
+        lineage edges (not Python imports) so the in_degree=0 heuristic would
+        give false positives for every dbt model file.
+        """
+        _PYTHON_ONLY = {Language.PYTHON}
         dead = 0
         for node_id in kg.module_graph.nodes():
             if kg.module_graph.in_degree(node_id) == 0:
                 if node_id in kg._modules:
                     mod = kg._modules[node_id]
+                    if mod.language not in _PYTHON_ONLY:
+                        continue  # dead-code heuristic only applies to Python
                     if not mod.exports:
                         mod.is_dead_code_candidate = True
                         kg.module_graph.nodes[node_id]["is_dead_code_candidate"] = True

@@ -16,12 +16,19 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 _RATE_LIMIT_MARKERS = ("429", "resource_exhausted", "quota", "rate limit", "ratelimit", "too many requests")
+_NOT_FOUND_MARKERS = ("404", "not_found", "models/gemini")
 
 
 def _is_rate_limit(exc: Exception) -> bool:
     """Return True if the exception looks like an API rate-limit / quota error."""
     msg = str(exc).lower()
     return any(marker in msg for marker in _RATE_LIMIT_MARKERS)
+
+
+def _is_model_not_found(exc: Exception) -> bool:
+    """Return True if the exception looks like a missing / invalid model error."""
+    msg = str(exc).lower()
+    return any(marker in msg for marker in _NOT_FOUND_MARKERS)
 
 
 def _parse_retry_delay(exc: Exception, default: float = 60.0) -> float:
@@ -48,7 +55,7 @@ FIVE_QUESTIONS = [
 class ContextWindowBudget:
     """Tracks token usage and routes LLM calls to appropriate models."""
 
-    # gemini-1.5-flash free tier = $0 on Google AI Studio
+    # gemini-2.0-flash free tier = $0 on Google AI Studio
     # We no longer use OpenAI/GPT models in this project.
     COST_PER_1K = {"gemini-flash": 0.0}
 
@@ -88,6 +95,9 @@ class Semanticist:
         self._gemini_client = None
         # Unix timestamp after which Gemini may be tried again (0 = not rate-limited)
         self._gemini_available_at: float = 0.0
+        # If we discover during a run that the configured Gemini model is invalid or
+        # not available for this account, we mark it disabled to avoid repeated 404s.
+        self._gemini_disabled: bool = False
 
     def analyze(self, kg: KnowledgeGraph, repo_path: Optional[Path] = None) -> dict:
         console.print("[bold cyan]Semanticist[/bold cyan] - running LLM analysis...")
@@ -96,7 +106,7 @@ class Semanticist:
         if client is None:
             console.print(
                 "  [yellow]WARN[/yellow]  No LLM API key found "
-                "(GOOGLE_API_KEY / OPENAI_API_KEY / GROQ_API_KEY) — skipping semantic analysis"
+                "(GOOGLE_API_KEY / GROQ_API_KEY) — skipping semantic analysis"
             )
             return {}
         console.print(f"  [dim]Using provider: {self._llm_provider}[/dim]")
@@ -197,9 +207,18 @@ class Semanticist:
 
             embeddings = self._embed_texts(statements)
             if embeddings is None:
+                logger.info(
+                    "Domain clustering disabled: sentence-transformers not available. "
+                    "Install `sentence-transformers` to enable the Domain Architecture Map."
+                )
                 return {}
 
-            k = min(6, len(statements))
+            # Allow override via env while keeping a sane default range (2–8).
+            try:
+                k_env = int(os.getenv("SEMANTICIST_NUM_DOMAINS", "6"))
+            except ValueError:
+                k_env = 6
+            k = max(2, min(k_env, 8, len(statements)))
             kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
             labels = kmeans.fit_predict(embeddings)
 
@@ -294,9 +313,9 @@ class Semanticist:
         if self._llm_client is not None:
             return self._llm_client
 
-        # Priority: Gemini (free tier) > Groq
+        # Priority: Gemini (free tier) > Groq.
         # Uses the new google-genai SDK (from google import genai), not the old google-generativeai.
-        if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
+        if not self._gemini_disabled and (os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")):
             try:
                 from google import genai  # new SDK: pip install google-genai
                 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -355,7 +374,7 @@ class Semanticist:
                 if self._llm_provider == "gemini":
                     # New google-genai SDK: client is a genai.Client instance
                     response = client.models.generate_content(
-                        model="gemini-1.5-flash",
+                        model="gemini-2.0-flash",
                         contents=prompt,
                     )
                     return response.text or ""
@@ -375,6 +394,17 @@ class Semanticist:
                     delay = _parse_retry_delay(exc)
                     self._enter_groq_cooldown(delay)
                     return self._call_groq(prompt)
+
+                if self._llm_provider == "gemini" and _is_model_not_found(exc):
+                    # The configured Gemini model is invalid or not available for this API
+                    # version/account. Disable Gemini for the rest of this run to avoid
+                    # spamming 404s, and fall back to Groq directly.
+                    logger.warning("Gemini model not found (%s) — disabling Gemini for this run and using Groq", exc)
+                    self._gemini_disabled = True
+                    self._gemini_client = None
+                    # Switch provider to Groq if possible
+                    fallback = self._call_groq(prompt)
+                    return fallback
 
                 if self._llm_provider == "gemini" and attempt >= _retries:
                     # Non-rate-limit Gemini error after retries — fall back once
@@ -458,7 +488,28 @@ class Semanticist:
             return "general"
 
     def _semantically_similar(self, text_a: str, text_b: str) -> bool:
-        """Rough check: if word overlap > 30%, consider similar enough."""
+        """Check semantic similarity using embeddings, with word-overlap fallback.
+
+        If cosine similarity >= 0.8 we treat the texts as "similar enough".
+        """
+        # Prefer embedding-based similarity if the optional dependency is available.
+        try:
+            embs = self._embed_texts([text_a, text_b])
+        except Exception:
+            embs = None
+
+        if embs is not None:
+            try:
+                import numpy as np
+
+                a, b = embs[0], embs[1]
+                denom = (np.linalg.norm(a) * np.linalg.norm(b)) or 1.0
+                sim = float(np.dot(a, b) / denom)
+                return sim >= 0.8
+            except Exception as exc:
+                logger.warning("Embedding similarity check failed, falling back to word overlap: %s", exc)
+
+        # Fallback: simple word-overlap heuristic
         words_a = set(text_a.lower().split())
         words_b = set(text_b.lower().split())
         if not words_a or not words_b:

@@ -248,6 +248,22 @@ def page_system_map(kg) -> None:
 
     col1, col2 = st.columns([2, 1])
     with col2:
+        # Surface whether Semanticist ran and whether domain clustering is enabled.
+        has_purpose = any(m.purpose_statement for m in all_modules)
+        has_domains = any(m.domain_cluster for m in all_modules)
+        if not has_purpose:
+            st.info(
+                "Semanticist has not run for this repo yet. "
+                "Re-run `cartographer analyze <repo>` with a configured GOOGLE_API_KEY / GROQ_API_KEY "
+                "to generate purpose statements and domain clusters."
+            )
+        elif not has_domains:
+            st.info(
+                "Purpose statements exist but no domain clusters are assigned. "
+                "Install the optional `sentence-transformers` package and re-run analysis "
+                "to enable the Domain Architecture Map coloring."
+            )
+
         domains = sorted({m.domain_cluster or "uncategorized" for m in all_modules})
         selected_domain = st.selectbox("Filter by domain", ["All"] + domains)
 
@@ -408,6 +424,19 @@ def page_domain_map(kg) -> None:
     if not modules:
         st.warning("No modules analyzed.")
         return
+
+    has_purpose = any(m.purpose_statement for m in modules)
+    has_domains = any(m.domain_cluster for m in modules)
+    if not has_purpose:
+        st.info(
+            "No purpose statements found. The Semanticist agent has not been run for this repo. "
+            "Re-run `cartographer analyze <repo>` with GOOGLE_API_KEY / GROQ_API_KEY configured."
+        )
+    elif not has_domains:
+        st.info(
+            "No domain clusters assigned. Install `sentence-transformers` and re-run analysis "
+            "to enable domain-based grouping; currently showing all modules as 'uncategorized'."
+        )
 
     data = [
         {

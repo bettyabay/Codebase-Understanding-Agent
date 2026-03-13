@@ -253,9 +253,8 @@ def page_system_map(kg) -> None:
         has_domains = any(m.domain_cluster for m in all_modules)
         if not has_purpose:
             st.info(
-                "Semanticist has not run for this repo yet. "
-                "Re-run `cartographer analyze <repo>` with a configured GOOGLE_API_KEY / GROQ_API_KEY "
-                "to generate purpose statements and domain clusters."
+                "This graph does not contain stored purpose statements or domain clusters. "
+                "If you expected semantic annotations, check the analysis logs for LLM errors."
             )
         elif not has_domains:
             st.info(
@@ -298,7 +297,7 @@ def page_system_map(kg) -> None:
             lang_str = str(inspected.language).replace("Language.", "") if inspected.language else "—"
             st.markdown(f"**Path:** `{inspected.path}`")
             st.markdown(f"**Language:** `{lang_str}`")
-            st.markdown(f"**Domain:** `{inspected.domain_cluster or '— (no LLM run yet)'}`")
+            st.markdown(f"**Domain:** `{inspected.domain_cluster or 'uncategorized'}`")
             st.markdown(f"**LOC:** {inspected.lines_of_code} &nbsp; **Complexity:** {inspected.complexity_score}")
             st.markdown(f"**Velocity (30d):** {inspected.change_velocity_30d} commits")
             st.markdown(f"**PageRank:** {inspected.pagerank_score:.6f}")
@@ -312,7 +311,7 @@ def page_system_map(kg) -> None:
             if inspected.purpose_statement:
                 st.info(f"**Purpose:** {inspected.purpose_statement}")
             else:
-                st.caption("Purpose statement not yet generated — run without `--skip-llm`.")
+                st.caption("No stored purpose statement for this module.")
 
     filter_domain = None if selected_domain == "All" else selected_domain
 

@@ -116,6 +116,16 @@ class KnowledgeGraph:
     def save(self, output_dir: Path) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Sync any updated ModuleNode attributes (e.g. purpose_statement, domain_cluster)
+        # back into the NetworkX graph nodes before serialization.
+        for path, module in self._modules.items():
+            if path in self.module_graph:
+                try:
+                    self.module_graph.nodes[path].update(module.model_dump())
+                except Exception:
+                    # Best-effort: if something goes wrong, avoid blocking save()
+                    pass
+
         # Use "edges" for forward compatibility with NetworkX 3.6+ (load method handles both "edges" and "links")
         module_data = json_graph.node_link_data(self.module_graph, edges="edges")
         with open(output_dir / "module_graph.json", "w", encoding="utf-8") as f:

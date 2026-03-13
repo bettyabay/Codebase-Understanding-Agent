@@ -9,6 +9,7 @@ from typing import Optional
 from rich.console import Console
 
 from src.agents.hydrologist import Hydrologist
+from src.agents.semanticist import FIVE_QUESTIONS as DAY_ONE_QUESTIONS
 from src.agents.surveyor import Surveyor
 from src.graph.knowledge_graph import KnowledgeGraph
 
@@ -16,14 +17,6 @@ logger = logging.getLogger(__name__)
 console = Console()
 _surveyor = Surveyor()
 _hydro = Hydrologist()
-
-FIVE_QUESTIONS = [
-    "What is the primary data ingestion path?",
-    "What are the 3–5 most critical output datasets or endpoints?",
-    "What is the blast radius if the most critical module fails?",
-    "Where is the business logic concentrated vs. distributed?",
-    "What has changed most frequently in the last 90 days?",
-]
 
 
 class Archivist:
@@ -167,7 +160,7 @@ class Archivist:
         lines.append(f"> Generated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}\n\n")
         lines.append("## The Five Day-One Questions\n\n")
 
-        for i, question in enumerate(FIVE_QUESTIONS, 1):
+        for i, question in enumerate(DAY_ONE_QUESTIONS, 1):
             answer = day_one_answers.get(question, "_Not yet answered_")
             lines.append(f"### {i}. {question}\n\n")
             lines.append(f"{answer}\n\n")

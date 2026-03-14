@@ -18,6 +18,16 @@ console = Console()
 _RATE_LIMIT_MARKERS = ("429", "resource_exhausted", "quota", "rate limit", "ratelimit", "too many requests")
 _NOT_FOUND_MARKERS = ("404", "not_found", "models/gemini")
 
+# ── Env-var config ─────────────────────────────────────────────────────────────
+# Primary model for per-module purpose statements  (e.g. arcee-ai/trinity-large-preview:free)
+_MODEL_NAME: str = os.getenv("MODEL_NAME", "gemini-1.5-flash")
+# Model for heavier synthesis tasks (day-one questions, domain labelling)
+_STRONG_MODEL: str = os.getenv("STRONG_MODEL", _MODEL_NAME)
+# Token budget cap across the whole run (default 2 M)
+_TOKEN_BUDGET: int = int(os.getenv("CARTOGRAPHER_TOKEN_BUDGET", "2000000"))
+# K for domain KMeans clustering
+_DOMAIN_K: int = max(2, min(int(os.getenv("CARTOGRAPHER_DOMAIN_K", "6")), 8))
+
 
 def _is_rate_limit(exc: Exception) -> bool:
     """Return True if the exception looks like an API rate-limit / quota error."""
@@ -53,14 +63,12 @@ FIVE_QUESTIONS = [
 
 
 class ContextWindowBudget:
-    """Tracks token usage and routes LLM calls to appropriate models."""
+    """Tracks token usage and enforces CARTOGRAPHER_TOKEN_BUDGET cap."""
 
-    # gemini-2.0-flash free tier = $0 on Google AI Studio
-    # We no longer use OpenAI/GPT models in this project.
-    COST_PER_1K = {"gemini-flash": 0.0}
+    COST_PER_1K: dict[str, float] = {}  # all providers here are free-tier
 
-    def __init__(self, budget_usd: float = 2.0) -> None:
-        self.budget_usd = budget_usd
+    def __init__(self) -> None:
+        self.budget_tokens: int = _TOKEN_BUDGET
         self.spent_usd = 0.0
         self.total_tokens = 0
 
@@ -69,15 +77,15 @@ class ContextWindowBudget:
 
     def track_spend(self, tokens: int, model: str) -> None:
         self.total_tokens += tokens
-        rate = self.COST_PER_1K.get(model, 0.001)
-        self.spent_usd += (tokens / 1000) * rate
 
     def select_model(self, token_count: int, synthesis: bool = False) -> str:
-        # Single-provider setup: always route budgeting through the Gemini bucket.
-        return "gemini-flash"
+        return _STRONG_MODEL if synthesis else _MODEL_NAME
 
     def budget_remaining(self) -> float:
-        return self.budget_usd - self.spent_usd
+        return float(self.budget_tokens - self.total_tokens)
+
+    def is_over_budget(self) -> bool:
+        return self.total_tokens >= self.budget_tokens
 
 
 class Semanticist:
@@ -90,7 +98,7 @@ class Semanticist:
     def __init__(self) -> None:
         self.budget = ContextWindowBudget()
         self._llm_client = None
-        self._llm_provider: str | None = None  # "gemini" | "openai" | "groq"
+        self._llm_provider: str | None = None  # "openrouter" | "gemini" | "groq"
         # Separate Gemini client kept alive so we can switch back after cooldown
         self._gemini_client = None
         # Unix timestamp after which Gemini may be tried again (0 = not rate-limited)
@@ -106,7 +114,7 @@ class Semanticist:
         if client is None:
             console.print(
                 "  [yellow]WARN[/yellow]  No LLM API key found "
-                "(GOOGLE_API_KEY / GROQ_API_KEY) — skipping semantic analysis"
+                "(OPENROUTER_API_KEY / GOOGLE_API_KEY / GROQ_API_KEY) — skipping semantic analysis"
             )
             return {}
         console.print(f"  [dim]Using provider: {self._llm_provider}[/dim]")
@@ -114,12 +122,22 @@ class Semanticist:
         modules = kg.all_modules()
         console.print(f"  Generating purpose statements for {len(modules)} modules...")
 
+        import time
         with Progress(TextColumn("{task.description}"), console=console) as prog:
             t = prog.add_task("Analyzing modules...", total=len(modules))
-            for module in modules:
+            for idx, module in enumerate(modules):
+                if self.budget.is_over_budget():
+                    console.print(
+                        f"  [yellow]Token budget ({_TOKEN_BUDGET:,}) reached — "
+                        f"stopping early after {self.budget.total_tokens:,} tokens[/yellow]"
+                    )
+                    break
                 source = self._read_source(repo_path, module.path) if repo_path else ""
                 if source:
                     self.generate_purpose_statement(module, source)
+                    # Small delay between requests to avoid overwhelming OpenRouter (especially free tier)
+                    if self._llm_provider == "openrouter" and idx < len(modules) - 1:
+                        time.sleep(0.5)  # 500ms delay between requests
                 prog.advance(t)
 
         if len(modules) >= 3:
@@ -213,12 +231,7 @@ class Semanticist:
                 )
                 return {}
 
-            # Allow override via env while keeping a sane default range (2–8).
-            try:
-                k_env = int(os.getenv("SEMANTICIST_NUM_DOMAINS", "6"))
-            except ValueError:
-                k_env = 6
-            k = max(2, min(k_env, 8, len(statements)))
+            k = min(_DOMAIN_K, len(statements))
             kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
             labels = kmeans.fit_predict(embeddings)
 
@@ -337,8 +350,26 @@ class Semanticist:
         if self._llm_client is not None:
             return self._llm_client
 
-        # Priority: Gemini (free tier) > Groq.
-        # Uses the new google-genai SDK (from google import genai), not the old google-generativeai.
+        # Priority: OpenRouter > Gemini > Groq.
+
+        # 1. OpenRouter — OpenAI-compatible, supports free models like arcee-ai/trinity-large-preview:free
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if openrouter_key:
+            try:
+                from openai import OpenAI
+                # Add timeout to prevent hanging on slow/failed connections
+                self._llm_client = OpenAI(
+                    api_key=openrouter_key,
+                    base_url="https://openrouter.ai/api/v1",
+                    timeout=30.0,  # 30 second timeout
+                    max_retries=2,  # Built-in retry with exponential backoff
+                )
+                self._llm_provider = "openrouter"
+                return self._llm_client
+            except (ImportError, Exception) as exc:
+                logger.warning("OpenRouter client init failed: %s — trying next provider", exc)
+
+        # 2. Gemini free tier
         if not self._gemini_disabled and (os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")):
             try:
                 from google import genai  # new SDK: pip install google-genai
@@ -351,6 +382,7 @@ class Semanticist:
             except (ImportError, Exception) as exc:
                 logger.warning("Gemini client init failed: %s — trying next provider", exc)
 
+        # 3. Groq
         groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
         if groq_key:
             try:
@@ -395,10 +427,24 @@ class Semanticist:
 
         for attempt in range(_retries + 1):
             try:
-                if self._llm_provider == "gemini":
+                if self._llm_provider == "openrouter":
+                    # OpenRouter: OpenAI-compatible endpoint; model set via MODEL_NAME / STRONG_MODEL
+                    # Add small delay between requests to avoid overwhelming the API
+                    if attempt > 0:
+                        time.sleep(min(2 ** attempt, 5))  # Max 5 second delay
+                    response = client.chat.completions.create(
+                        model=model,  # e.g. "arcee-ai/trinity-large-preview:free"
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=1024,
+                        temperature=0.2,
+                        timeout=30.0,  # Explicit timeout per request
+                    )
+                    return response.choices[0].message.content or ""
+
+                elif self._llm_provider == "gemini":
                     # New google-genai SDK: client is a genai.Client instance
                     response = client.models.generate_content(
-                        model="gemini-2.0-flash",
+                        model=model,  # e.g. "gemini-1.5-flash"
                         contents=prompt,
                     )
                     return response.text or ""
@@ -414,6 +460,41 @@ class Semanticist:
                     return response.choices[0].message.content or ""
 
             except Exception as exc:
+                # Handle OpenRouter connection/timeout errors — fall back to Gemini/Groq
+                if self._llm_provider == "openrouter":
+                    error_str = str(exc).lower()
+                    if any(marker in error_str for marker in ("connection", "timeout", "timed out", "network")):
+                        if attempt >= _retries:
+                            logger.warning(
+                                "OpenRouter connection failed (%s) — falling back to Gemini/Groq", exc
+                            )
+                            # Try to switch to Gemini or Groq as fallback
+                            self._llm_client = None
+                            self._llm_provider = None
+                            fallback_client = self._get_llm_client()
+                            if fallback_client and self._llm_provider:
+                                return self._call_llm(prompt, model, _retries=0)  # One retry with fallback
+                        else:
+                            wait = min(2 ** attempt, 10)  # Max 10 second delay
+                            logger.warning(
+                                "OpenRouter connection error (attempt %d/%d): %s — retrying in %ds",
+                                attempt + 1, _retries + 1, exc, wait,
+                            )
+                            time.sleep(wait)
+                            continue
+                    else:
+                        # Non-connection error from OpenRouter
+                        if attempt >= _retries:
+                            logger.warning("OpenRouter call failed after %d attempts: %s", _retries + 1, exc)
+                        else:
+                            wait = min(2 ** attempt, 5)
+                            logger.warning(
+                                "OpenRouter error (attempt %d/%d): %s — retrying in %ds",
+                                attempt + 1, _retries + 1, exc, wait,
+                            )
+                            time.sleep(wait)
+                            continue
+
                 if self._llm_provider == "gemini" and _is_rate_limit(exc):
                     delay = _parse_retry_delay(exc)
                     self._enter_groq_cooldown(delay)
@@ -436,7 +517,7 @@ class Semanticist:
                     return self._call_groq(prompt)
 
                 if attempt < _retries:
-                    wait = 2 ** attempt
+                    wait = min(2 ** attempt, 10)  # Cap at 10 seconds
                     logger.warning(
                         "LLM call failed (attempt %d/%d): %s — retrying in %ds",
                         attempt + 1, _retries + 1, exc, wait,
@@ -507,7 +588,7 @@ class Semanticist:
             f"Respond with only the label."
         )
         try:
-            return self._call_llm(prompt, "gemini-flash").strip().lower() or "general"
+            return self._call_llm(prompt, _STRONG_MODEL).strip().lower() or "general"
         except Exception:
             return "general"
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 import networkx as nx
@@ -36,7 +37,8 @@ class Surveyor:
         console.print("[bold cyan]Surveyor[/bold cyan] - scanning repository structure...")
 
         files = walk_repo(repo_path)
-        velocity = extract_git_velocity(repo_path, days=30)
+        _git_days = int(os.getenv("CARTOGRAPHER_GIT_DAYS", "30"))
+        velocity = extract_git_velocity(repo_path, days=_git_days)
         high_velocity = identify_high_velocity_files(velocity)
 
         python_files = [f for f in files if f.language == Language.PYTHON]

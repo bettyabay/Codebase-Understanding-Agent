@@ -11,7 +11,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
       "line_number": 0,
       "id": "ecom__raw_customers"
     },
@@ -23,7 +23,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
       "line_number": 0,
       "id": "ecom__raw_orders"
     },
@@ -35,7 +35,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
       "line_number": 0,
       "id": "ecom__raw_items"
     },
@@ -47,7 +47,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
       "line_number": 0,
       "id": "ecom__raw_stores"
     },
@@ -59,7 +59,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
       "line_number": 0,
       "id": "ecom__raw_products"
     },
@@ -71,7 +71,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\__sources.yml",
       "line_number": 0,
       "id": "ecom__raw_supplies"
     },
@@ -83,7 +83,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_customers.csv",
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_customers.csv",
       "line_number": 0,
       "id": "raw_customers"
     },
@@ -95,7 +95,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_items.csv",
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_items.csv",
       "line_number": 0,
       "id": "raw_items"
     },
@@ -107,7 +107,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_orders.csv",
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_orders.csv",
       "line_number": 0,
       "id": "raw_orders"
     },
@@ -119,7 +119,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_products.csv",
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_products.csv",
       "line_number": 0,
       "id": "raw_products"
     },
@@ -131,7 +131,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_stores.csv",
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_stores.csv",
       "line_number": 0,
       "id": "raw_stores"
     },
@@ -143,7 +143,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": true,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_supplies.csv",
+      "source_file": "repo_cache\\jaffle_shop\\seeds\\jaffle-data\\raw_supplies.csv",
       "line_number": 0,
       "id": "raw_supplies"
     },
@@ -155,7 +155,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": false,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
       "line_number": 0,
       "id": "customers"
     },
@@ -194,12 +194,12 @@
         "customers"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
       "id": "sql::customers"
     },
     {
@@ -210,7 +210,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": false,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
       "line_number": 0,
       "id": "locations"
     },
@@ -236,12 +236,12 @@
         "locations"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
       "id": "sql::locations"
     },
     {
@@ -252,7 +252,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": false,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
       "line_number": 0,
       "id": "metricflow_time_spine"
     },
@@ -264,12 +264,12 @@
         "metricflow_time_spine"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
       "id": "sql::metricflow_time_spine"
     },
     {
@@ -307,12 +307,12 @@
         "orders"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
       "id": "sql::orders"
     },
     {
@@ -364,12 +364,12 @@
         "order_items"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
       "id": "sql::order_items"
     },
     {
@@ -380,7 +380,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": false,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
       "line_number": 0,
       "id": "products"
     },
@@ -394,12 +394,12 @@
         "products"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
       "id": "sql::products"
     },
     {
@@ -410,7 +410,7 @@
       "freshness_sla": "",
       "owner": "",
       "is_source_of_truth": false,
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
       "line_number": 0,
       "id": "supplies"
     },
@@ -424,12 +424,12 @@
         "supplies"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
       "id": "sql::supplies"
     },
     {
@@ -442,12 +442,12 @@
         "stg_customers"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
       "id": "sql::stg_customers"
     },
     {
@@ -460,12 +460,12 @@
         "stg_locations"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
       "id": "sql::stg_locations"
     },
     {
@@ -478,12 +478,12 @@
         "stg_orders"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
       "id": "sql::stg_orders"
     },
     {
@@ -496,12 +496,12 @@
         "stg_order_items"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
       "id": "sql::stg_order_items"
     },
     {
@@ -514,12 +514,12 @@
         "stg_products"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
       "id": "sql::stg_products"
     },
     {
@@ -532,19 +532,19 @@
         "stg_supplies"
       ],
       "transformation_type": "sql",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
       "line_range": [
         0,
         0
       ],
-      "sql_query_if_applicable": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "sql_query_if_applicable": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
       "id": "sql::stg_supplies"
     }
   ],
   "edges": [
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
       "line_range": [
         0,
         0
@@ -554,7 +554,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
       "line_range": [
         0,
         0
@@ -564,7 +564,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
       "line_range": [
         0,
         0
@@ -574,7 +574,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
       "line_range": [
         0,
         0
@@ -584,7 +584,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
       "line_range": [
         0,
         0
@@ -594,7 +594,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
       "line_range": [
         0,
         0
@@ -604,7 +604,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
       "line_range": [
         0,
         0
@@ -614,7 +614,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
       "line_range": [
         0,
         0
@@ -624,7 +624,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\customers.sql",
       "line_range": [
         0,
         0
@@ -634,7 +634,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
       "line_range": [
         0,
         0
@@ -644,7 +644,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\locations.sql",
       "line_range": [
         0,
         0
@@ -654,7 +654,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\metricflow_time_spine.sql",
       "line_range": [
         0,
         0
@@ -664,7 +664,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
       "line_range": [
         0,
         0
@@ -674,7 +674,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
       "line_range": [
         0,
         0
@@ -684,7 +684,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
       "line_range": [
         0,
         0
@@ -694,7 +694,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\orders.sql",
       "line_range": [
         0,
         0
@@ -704,7 +704,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
       "line_range": [
         0,
         0
@@ -714,7 +714,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
       "line_range": [
         0,
         0
@@ -724,7 +724,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
       "line_range": [
         0,
         0
@@ -734,7 +734,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
       "line_range": [
         0,
         0
@@ -744,7 +744,7 @@
     },
     {
       "edge_type": "CONSUMES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
       "line_range": [
         0,
         0
@@ -754,7 +754,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\order_items.sql",
       "line_range": [
         0,
         0
@@ -764,7 +764,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\products.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\products.sql",
       "line_range": [
         0,
         0
@@ -774,7 +774,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\marts\\supplies.sql",
       "line_range": [
         0,
         0
@@ -784,7 +784,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_customers.sql",
       "line_range": [
         0,
         0
@@ -794,7 +794,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_locations.sql",
       "line_range": [
         0,
         0
@@ -804,7 +804,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_orders.sql",
       "line_range": [
         0,
         0
@@ -814,7 +814,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_order_items.sql",
       "line_range": [
         0,
         0
@@ -824,7 +824,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_products.sql",
       "line_range": [
         0,
         0
@@ -834,7 +834,7 @@
     },
     {
       "edge_type": "PRODUCES",
-      "source_file": "C:\\Users\\SNFD\\Desktop\\Tenacious Projects\\Codebase-Understanding-Agent\\repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
+      "source_file": "repo_cache\\jaffle_shop\\models\\staging\\stg_supplies.sql",
       "line_range": [
         0,
         0

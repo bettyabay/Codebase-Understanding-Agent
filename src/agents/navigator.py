@@ -189,31 +189,49 @@ def build_navigator_graph(kg: KnowledgeGraph, repo_path: Optional[Path] = None, 
         return None
 
 
-_NAVIGATOR_MODEL = "gemini-1.5-flash"
+# Model names: respect MODEL_NAME env var, fall back to gemini-1.5-flash
+_NAVIGATOR_MODEL = os.getenv("MODEL_NAME", "gemini-1.5-flash")
 # Respects GROQ_MODEL env var; also accepts the common GROK_API_KEY typo
 _GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 
 def _get_llm_for_navigator():
-    """Build the Navigator LLM with automatic fallbacks: Gemini → Groq.
+    """Build the Navigator LLM with automatic fallbacks: OpenRouter → Gemini → Groq.
 
-    Uses LangChain's .with_fallbacks() so rate-limit errors on Gemini transparently
+    Uses LangChain's .with_fallbacks() so rate-limit errors transparently
     retry the next provider without restarting the agent.
     """
     candidates = []
 
-    # 1. Gemini 2.5 Flash (primary, free tier)
-    if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
+    # 1. OpenRouter (primary if OPENROUTER_API_KEY is set)
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_key:
         try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            from langchain_openai import ChatOpenAI
             candidates.append(
-                ChatGoogleGenerativeAI(model=_NAVIGATOR_MODEL, google_api_key=api_key, temperature=0)
+                ChatOpenAI(
+                    model=_NAVIGATOR_MODEL,
+                    api_key=openrouter_key,
+                    base_url="https://openrouter.ai/api/v1",
+                    temperature=0,
+                )
             )
         except ImportError:
             pass
 
-    # 2. Groq Llama (rate-limit fallback) — accept GROQ_API_KEY or the common GROK_API_KEY typo
+    # 2. Gemini (free tier fallback)
+    if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            gemini_model = "gemini-1.5-flash" if _NAVIGATOR_MODEL.startswith("arcee") else _NAVIGATOR_MODEL
+            candidates.append(
+                ChatGoogleGenerativeAI(model=gemini_model, google_api_key=api_key, temperature=0)
+            )
+        except ImportError:
+            pass
+
+    # 3. Groq Llama — accept GROQ_API_KEY or the common GROK_API_KEY typo
     groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
     if groq_key:
         try:

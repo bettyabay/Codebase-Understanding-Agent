@@ -1,0 +1,7 @@
+{"timestamp": "2026-03-14T08:27:41.664253+00:00", "agent": "surveyor", "action": "surveyor_start", "evidence_source": "static_analysis", "confidence_level": 1.0}
+{"timestamp": "2026-03-14T08:28:07.484363+00:00", "agent": "surveyor", "action": "surveyor_complete", "evidence_source": "static_analysis", "confidence_level": 1.0, "modules": 1338}
+{"timestamp": "2026-03-14T08:28:07.485102+00:00", "agent": "hydrologist", "action": "hydrologist_start", "evidence_source": "data_flow_analysis", "confidence_level": 1.0}
+{"timestamp": "2026-03-14T08:28:08.187077+00:00", "agent": "hydrologist", "action": "hydrologist_complete", "evidence_source": "data_flow_analysis", "confidence_level": 1.0, "datasets": 19}
+{"timestamp": "2026-03-14T08:28:08.235067+00:00", "agent": "semanticist", "action": "semanticist_start", "evidence_source": "llm_analysis", "confidence_level": 0.9}
+{"timestamp": "2026-03-14T08:55:37.825934+00:00", "agent": "semanticist", "action": "semanticist_complete", "evidence_source": "llm_analysis", "confidence_level": 0.9}
+{"timestamp": "2026-03-14T08:55:37.941905+00:00", "agent": "archivist", "action": "full_analysis_complete", "evidence_source": "all_agents", "confidence_level": 1.0, "repo_commit": "263f5634e558ef7e0a2cc8df239bba626b2e605e", "stats": {"modules": 1338, "datasets": 19, "transformations": 8, "functions": 2949, "module_edges": 2568, "lineage_edges": 30}}

@@ -19,6 +19,16 @@ _surveyor = Surveyor()
 _hydro = Hydrologist()
 
 
+def _is_placeholder_answer(answer: str) -> bool:
+    """True if the answer is a placeholder with no real content (e.g. 'See LLM response (question N):')."""
+    s = answer.strip()
+    if not s or s == "_Not yet answered_" or s.startswith("LLM not configured"):
+        return True
+    if "See LLM response (question" in s and len(s) < 120:
+        return True
+    return False
+
+
 class Archivist:
     """Agent 4: Living Context Maintainer.
 
@@ -162,6 +172,11 @@ class Archivist:
 
         for i, question in enumerate(DAY_ONE_QUESTIONS, 1):
             answer = day_one_answers.get(question, "_Not yet answered_")
+            # Normalize placeholder or empty LLM answers so the brief is clear
+            if not answer or not answer.strip():
+                answer = "_Answer not available. Re-run analysis to generate._"
+            elif _is_placeholder_answer(answer):
+                answer = "_Answer not available. Re-run analysis to generate._"
             lines.append(f"### {i}. {question}\n\n")
             lines.append(f"{answer}\n\n")
 

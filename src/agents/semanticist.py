@@ -279,28 +279,52 @@ class Semanticist:
             f"## Questions\nAnswer each of the following five questions with specific evidence. "
             f"For each answer, cite specific file paths and line numbers where possible.\n\n"
             f"{questions_str}\n\n"
-            f"Format your response as a JSON object with question numbers as keys (q1..q5)."
+            f"Respond with ONLY a valid JSON object. Use exactly these keys: q1, q2, q3, q4, q5. "
+            f"Each value must be a string containing the full answer for that question. Example:\n"
+            f'{{"q1": "Your answer for question 1...", "q2": "Your answer for question 2...", ...}}'
         )
 
         try:
             model = self.budget.select_model(self.budget.estimate_tokens(prompt), synthesis=True)
             response = self._call_llm(prompt, model)
+            if not response or not response.strip():
+                logger.warning("Day-one synthesis: LLM returned empty response")
+                return {q: "LLM did not return a response for this question." for q in FIVE_QUESTIONS}
             self.budget.track_spend(self.budget.estimate_tokens(prompt + response), model)
 
-            # Try to parse JSON response
-            try:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                if start >= 0 and end > start:
+            # Try to parse JSON response (multiple key styles)
+            start = response.find("{")
+            end = response.rfind("}") + 1
+            if start >= 0 and end > start:
+                try:
                     parsed = json.loads(response[start:end])
-                    return {FIVE_QUESTIONS[i]: parsed.get(f"q{i+1}", "") for i in range(5)}
-            except json.JSONDecodeError:
-                pass
+                    answers = {}
+                    for i in range(5):
+                        val = (
+                            parsed.get(f"q{i+1}")
+                            or parsed.get(str(i + 1))
+                            or (parsed.get(str(i + 1)) if isinstance(parsed.get(str(i + 1)), str) else None)
+                        )
+                        if isinstance(val, str) and val.strip():
+                            answers[FIVE_QUESTIONS[i]] = val.strip()
+                        else:
+                            answers[FIVE_QUESTIONS[i]] = ""
+                    if any(answers.values()):
+                        return answers
+                except json.JSONDecodeError:
+                    pass
 
-            # Fallback: split by question numbers
+            # Fallback: show raw response so user at least sees LLM output
+            raw = response.strip()
+            if len(raw) > 50:
+                # Use same raw text for all so the brief isn't repetitive; first question gets the full text
+                return {
+                    FIVE_QUESTIONS[0]: raw,
+                    **{FIVE_QUESTIONS[i]: f"(See consolidated response under question 1.)\n\n{raw[:500]}…" for i in range(1, 5)},
+                }
             answers = {}
             for i, question in enumerate(FIVE_QUESTIONS):
-                answers[question] = f"See LLM response (question {i+1}):\n{response}"
+                answers[question] = raw if raw else "LLM did not return a response for this question."
             return answers
 
         except Exception as exc:

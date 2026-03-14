@@ -5,27 +5,27 @@
 
 ### 1. What is the primary data ingestion path?
 
-See LLM response (question 1):
+_Answer not available. Re-run analysis to generate._
 
 
 ### 2. What are the 3–5 most critical output datasets or endpoints?
 
-See LLM response (question 2):
+_Answer not available. Re-run analysis to generate._
 
 
 ### 3. What is the blast radius if the most critical module fails?
 
-See LLM response (question 3):
+_Answer not available. Re-run analysis to generate._
 
 
 ### 4. Where is the business logic concentrated vs. distributed?
 
-See LLM response (question 4):
+_Answer not available. Re-run analysis to generate._
 
 
 ### 5. What has changed most frequently in the last 90 days (high-velocity files)?
 
-See LLM response (question 5):
+_Answer not available. Re-run analysis to generate._
 
 
 ---
